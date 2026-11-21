@@ -10,6 +10,8 @@ export const metadata = {
   title: "Employee Directory | Smart Roster Management",
 };
 
+export const instant = false
+
 export default async function EmployeesPage() {
   const [employees, pods] = await Promise.all([getEmployees(), getPodsWithMembers()]);
 

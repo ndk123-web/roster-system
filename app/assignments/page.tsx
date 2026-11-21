@@ -8,7 +8,10 @@ export const metadata = {
   title: "Resource Assignments | Smart Roster Management",
 };
 
+export const instant = false
+
 export default async function AssignmentsPage() {
+  
   const assignments = await getAssignments();
 
   const activeCount = assignments.filter((a) => a.active).length;

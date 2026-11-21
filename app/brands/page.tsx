@@ -8,6 +8,8 @@ export const metadata = {
   title: "Client Brands | Smart Roster Management",
 };
 
+export const instant = false
+
 const PATTERN_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   ALL_365: { label: "365-Day Operations", variant: "default" },
   DAILY_EXCEPT_HOLIDAYS: { label: "Daily Except Holidays", variant: "secondary" },

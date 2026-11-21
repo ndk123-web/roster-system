@@ -9,6 +9,8 @@ export const metadata = {
   title: "Public Holidays | Smart Roster Management",
 };
 
+export const instant = false
+
 export default async function HolidaysPage() {
   const holidays = await getPublicHolidays();
 
