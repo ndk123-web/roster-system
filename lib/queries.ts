@@ -40,7 +40,10 @@ export interface EmployeeRow {
   podId: string | null;
   podName: string | null;
   isLead: boolean;
+  leadsPodName: string | null;
   weeklyOffDays: number[]; // 0=Sun..6=Sat
+  weeklyOffFrom: string | null;
+  weeklyOffTo: string | null;
 }
 
 export interface BrandRow {
@@ -50,12 +53,21 @@ export interface BrandRow {
   active: boolean;
   isSingleResource: boolean; // derived: uniqueEmployees ≤ 1
   rules: {
+    id: string;
     processId: string;
     processName: string;
     processCode: string;
+    processActive: boolean;
     operatingPattern: string;
+    customDaysOfWeek: number[];
     operatesOnHolidays: boolean;
     defaultMinStaffing: number;
+    customStaffingRules: {
+      id: string;
+      dayOfWeek: number | null;
+      specificDate: string | null;
+      requiredStaffing: number;
+    }[];
   }[];
   assignedEmployeeCount: number;
 }
@@ -73,6 +85,8 @@ export interface AssignmentRow {
   processCode: string;
   isPrimary: boolean;
   active: boolean;
+  effectiveFrom: string;
+  effectiveTo: string | null;
 }
 
 export interface LeaveRow {
@@ -205,7 +219,15 @@ export async function getEmployees(): Promise<EmployeeRow[]> {
   const employees = await prisma.employee.findMany({
     include: {
       pod: { select: { id: true, name: true, leadId: true } },
-      weeklyOffs: { select: { dayOfWeek: true } },
+      leadOfPod: { select: { name: true } },
+      weeklyOffs: {
+        select: {
+          dayOfWeek: true,
+          effectiveFrom: true,
+          effectiveTo: true,
+        },
+        orderBy: { dayOfWeek: "asc" },
+      },
     },
     orderBy: { code: "asc" },
   });
@@ -219,7 +241,12 @@ export async function getEmployees(): Promise<EmployeeRow[]> {
     podId: e.podId,
     podName: e.pod?.name ?? null,
     isLead: e.pod?.leadId === e.id,
+    leadsPodName: e.leadOfPod?.name ?? null,
     weeklyOffDays: e.weeklyOffs.map((w) => w.dayOfWeek),
+    weeklyOffFrom: e.weeklyOffs[0] ? format(e.weeklyOffs[0].effectiveFrom, "yyyy-MM-dd") : null,
+    weeklyOffTo: e.weeklyOffs[0]?.effectiveTo
+      ? format(e.weeklyOffs[0].effectiveTo as Date, "yyyy-MM-dd")
+      : null,
   }));
 }
 
@@ -229,7 +256,7 @@ export async function getPodsWithMembers() {
   await connection();
   return prisma.pod.findMany({
     include: {
-      lead: { select: { id: true, name: true, code: true, email: true } },
+      lead: { select: { id: true, name: true, code: true, email: true, active: true } },
       employees: {
         select: { id: true, name: true, code: true, email: true, active: true },
         orderBy: { code: "asc" },
@@ -246,7 +273,18 @@ export async function getBrandsWithRules(): Promise<BrandRow[]> {
   const brands = await prisma.brand.findMany({
     include: {
       rules: {
-        include: { process: { select: { id: true, name: true, code: true } } },
+        include: {
+          process: { select: { id: true, name: true, code: true, active: true } },
+          customStaffingRules: {
+            select: {
+              id: true,
+              dayOfWeek: true,
+              specificDate: true,
+              requiredStaffing: true,
+            },
+            orderBy: [{ dayOfWeek: "asc" }, { specificDate: "asc" }],
+          },
+        },
       },
       assignments: {
         where: { active: true },
@@ -266,12 +304,23 @@ export async function getBrandsWithRules(): Promise<BrandRow[]> {
       isSingleResource: uniqueEmployees <= 1,
       assignedEmployeeCount: uniqueEmployees,
       rules: b.rules.map((r) => ({
+        id: r.id,
         processId: r.processId,
         processName: r.process.name,
         processCode: r.process.code,
+        processActive: r.process.active,
         operatingPattern: r.operatingPattern,
+        customDaysOfWeek: [...r.customDaysOfWeek].sort((left, right) => left - right),
         operatesOnHolidays: r.operatesOnHolidays,
         defaultMinStaffing: r.defaultMinStaffing,
+        customStaffingRules: r.customStaffingRules.map((rule) => ({
+          id: rule.id,
+          dayOfWeek: rule.dayOfWeek,
+          specificDate: rule.specificDate
+            ? format(rule.specificDate, "yyyy-MM-dd")
+            : null,
+          requiredStaffing: rule.requiredStaffing,
+        })),
       })),
     };
   });
@@ -310,7 +359,36 @@ export async function getAssignments(): Promise<AssignmentRow[]> {
     processCode: r.process.code,
     isPrimary: r.isPrimary,
     active: r.active,
+    effectiveFrom: format(r.effectiveFrom, "yyyy-MM-dd"),
+    effectiveTo: r.effectiveTo ? format(r.effectiveTo, "yyyy-MM-dd") : null,
   }));
+}
+
+export async function getActiveEmployeeOptions() {
+  await connection();
+  return prisma.employee.findMany({
+    where: { active: true },
+    select: { id: true, name: true, code: true },
+    orderBy: { code: "asc" },
+  });
+}
+
+export async function getActiveBrandOptions() {
+  await connection();
+  return prisma.brand.findMany({
+    where: { active: true },
+    select: { id: true, name: true, code: true },
+    orderBy: { code: "asc" },
+  });
+}
+
+export async function getActiveProcessOptions() {
+  await connection();
+  return prisma.process.findMany({
+    where: { active: true },
+    select: { id: true, name: true, code: true },
+    orderBy: { code: "asc" },
+  });
 }
 
 // ─── Leaves & CompOffs ────────────────────────────────────────────────────────

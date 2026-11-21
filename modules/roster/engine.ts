@@ -1,43 +1,115 @@
-// Deterministic Roster Generation & Constraint Engine
-// Powered by date-fns for robust calendar expansion & date calculations
-// Docs: docs/prd.md Section 6.3
-
 import {
   eachDayOfInterval,
-  startOfMonth,
   endOfMonth,
   format,
   getDay,
-  parseISO,
-  isWithinInterval,
-  isSameDay,
+  startOfMonth,
 } from "date-fns";
 import type {
-  Employee,
-  Brand,
-  Process,
-  EmployeeAssignment,
-  PublicHoliday,
-  LeaveRecord,
-  CompOffRecord,
-  ValidationIssue,
+  OperatingPattern,
   RosterEntryStatus,
+  Severity,
+  IssueType,
 } from "@/data/types";
-import {
-  SEED_EMPLOYEES,
-  SEED_BRANDS,
-  SEED_PROCESSES,
-  SEED_RULES,
-  SEED_ASSIGNMENTS,
-  SEED_HOLIDAYS,
-  SEED_LEAVES,
-  SEED_COMPOFFS,
-} from "@/data/seed-data";
+
+export interface EngineWeeklyOff {
+  dayOfWeek: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+}
+
+export interface EngineEmployee {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+  weeklyOffs: EngineWeeklyOff[];
+}
+
+export interface EngineBrand {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+  isSingleResource: boolean;
+}
+
+export interface EngineProcess {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+}
+
+export interface EngineCustomStaffingRule {
+  dayOfWeek: number | null;
+  specificDate: string | null;
+  requiredStaffing: number;
+}
+
+export interface EngineRule {
+  id: string;
+  brandId: string;
+  processId: string;
+  operatingPattern: OperatingPattern;
+  customDaysOfWeek: number[];
+  operatesOnHolidays: boolean;
+  defaultMinStaffing: number;
+  customStaffingRules: EngineCustomStaffingRule[];
+}
+
+export interface EngineAssignment {
+  id: string;
+  employeeId: string;
+  brandId: string;
+  processId: string;
+  active: boolean;
+  isPrimary: boolean;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+}
+
+export interface EngineHoliday {
+  date: string;
+  name: string;
+  affectsAllProcesses: boolean;
+}
+
+export interface EngineLeave {
+  id: string;
+  employeeId: string;
+  startDate: string;
+  endDate: string;
+  type: string;
+  status: string;
+  reason: string | null;
+}
+
+export interface EngineCompOff {
+  id: string;
+  employeeId: string;
+  date: string;
+  status: string;
+  reason: string | null;
+}
+
+export interface GenerationInput {
+  month: number;
+  year: number;
+  employees: EngineEmployee[];
+  brands: EngineBrand[];
+  processes: EngineProcess[];
+  rules: EngineRule[];
+  assignments: EngineAssignment[];
+  holidays: EngineHoliday[];
+  leaves: EngineLeave[];
+  compOffs: EngineCompOff[];
+}
 
 export interface DayCoverageStatus {
   date: string;
   dayOfMonth: number;
-  dayOfWeek: number; // 0=Sun, 1=Mon, ..., 6=Sat
+  dayOfWeek: number;
   brandId: string;
   brandName: string;
   brandCode: string;
@@ -50,19 +122,23 @@ export interface DayCoverageStatus {
   isMet: boolean;
 }
 
+export interface ComputedAllocation {
+  brandId: string;
+  brandCode: string;
+  brandName: string;
+  processId: string;
+  processCode: string;
+  processName: string;
+}
+
 export interface ComputedEmployeeDay {
   date: string;
   dayOfMonth: number;
   dayOfWeek: number;
   status: RosterEntryStatus;
   statusLabel: string;
-  allocations: {
-    brandCode: string;
-    processCode: string;
-    brandName: string;
-    processName: string;
-  }[];
-  detail?: string;
+  detail: string;
+  allocations: ComputedAllocation[];
 }
 
 export interface DailyHealthSummary {
@@ -77,15 +153,38 @@ export interface DailyHealthSummary {
   gapCount: number;
 }
 
+export interface ComputedIssue {
+  id: string;
+  date: string;
+  severity: Severity;
+  issueType: IssueType;
+  brandId?: string;
+  brandName?: string;
+  processId?: string;
+  processName?: string;
+  employeeId?: string;
+  employeeName?: string;
+  requiredStaffing?: number;
+  allocatedStaffing?: number;
+  message: string;
+  suggestion?: string;
+}
+
 export interface GenerationResult {
   month: number;
   year: number;
   daysCount: number;
-  calendarDates: { date: Date; dateStr: string; dayOfMonth: number; dayOfWeek: number; dayLabel: string }[];
+  calendarDates: {
+    date: Date;
+    dateStr: string;
+    dayOfMonth: number;
+    dayOfWeek: number;
+    dayLabel: string;
+  }[];
   employeeSchedules: Record<string, ComputedEmployeeDay[]>;
   coverageMatrix: DayCoverageStatus[];
   dailyHealth: DailyHealthSummary[];
-  issues: ValidationIssue[];
+  issues: ComputedIssue[];
   status: "DRAFT" | "ISSUES_FOUND" | "PUBLISHED";
   summary: {
     totalShifts: number;
@@ -95,192 +194,272 @@ export interface GenerationResult {
   };
 }
 
-export function generateNovember2026Roster(
-  customLeaves: LeaveRecord[] = SEED_LEAVES,
-  customCompOffs: CompOffRecord[] = SEED_COMPOFFS,
-  customAssignments: EmployeeAssignment[] = SEED_ASSIGNMENTS
-): GenerationResult {
-  const year = 2026;
-  const month = 11; // November 2026
-  const baseDate = new Date(year, month - 1, 1);
+function dateFromString(value: string): Date {
+  return new Date(`${value}T12:00:00`);
+}
 
-  // Generate all month dates using date-fns
+function inRange(value: string, start: string, end: string | null): boolean {
+  return value >= start && (end === null || value <= end);
+}
+
+function statusLabel(status: RosterEntryStatus): string {
+  switch (status) {
+    case "WORKING":
+      return "W";
+    case "WEEKLY_OFF":
+      return "WO";
+    case "LEAVE":
+      return "L";
+    case "COMP_OFF":
+      return "CO";
+    case "PUBLIC_HOLIDAY":
+      return "PH";
+    default:
+      return "UA";
+  }
+}
+
+function getRequiredStaffing(
+  rule: EngineRule,
+  dateStr: string,
+  dayOfWeek: number,
+): number {
+  const specific = rule.customStaffingRules.find(
+    (item) => item.specificDate === dateStr,
+  );
+  if (specific) return Math.max(0, specific.requiredStaffing);
+
+  const weekly = rule.customStaffingRules.filter(
+    (item) => item.dayOfWeek === dayOfWeek,
+  );
+  if (weekly.length > 0) {
+    return Math.max(...weekly.map((item) => item.requiredStaffing));
+  }
+
+  return Math.max(0, rule.defaultMinStaffing);
+}
+
+function isRuleOperating(
+  rule: EngineRule,
+  dateStr: string,
+  dayOfWeek: number,
+  holiday: EngineHoliday | undefined,
+): boolean {
+  if (holiday && !rule.operatesOnHolidays) return false;
+  if (rule.operatingPattern === "SUNDAYS_AND_HOLIDAYS_OFF") {
+    return dayOfWeek !== 0 && !holiday;
+  }
+  if (rule.operatingPattern === "CUSTOM") {
+    return rule.customDaysOfWeek.includes(dayOfWeek);
+  }
+  return true;
+}
+
+function isEmployeeWeeklyOff(employee: EngineEmployee, dateStr: string, dayOfWeek: number) {
+  return employee.weeklyOffs.some(
+    (off) => off.dayOfWeek === dayOfWeek && inRange(dateStr, off.effectiveFrom, off.effectiveTo),
+  );
+}
+
+function isApprovedLeave(employeeId: string, dateStr: string, leaves: EngineLeave[]) {
+  return leaves.find(
+    (leave) =>
+      leave.employeeId === employeeId &&
+      leave.status === "APPROVED" &&
+      inRange(dateStr, leave.startDate, leave.endDate),
+  );
+}
+
+function isPendingLeave(employeeId: string, dateStr: string, leaves: EngineLeave[]) {
+  return leaves.find(
+    (leave) =>
+      leave.employeeId === employeeId &&
+      leave.status === "PENDING" &&
+      inRange(dateStr, leave.startDate, leave.endDate),
+  );
+}
+
+function isApprovedCompOff(employeeId: string, dateStr: string, compOffs: EngineCompOff[]) {
+  return compOffs.find(
+    (compOff) =>
+      compOff.employeeId === employeeId &&
+      compOff.status === "APPROVED" &&
+      compOff.date === dateStr,
+  );
+}
+
+export function generateMonthlyRoster(input: GenerationInput): GenerationResult {
+  const baseDate = new Date(input.year, input.month - 1, 1);
   const intervalDays = eachDayOfInterval({
     start: startOfMonth(baseDate),
     end: endOfMonth(baseDate),
   });
 
-  const calendarDates = intervalDays.map((d) => ({
-    date: d,
-    dateStr: format(d, "yyyy-MM-dd"),
-    dayOfMonth: parseInt(format(d, "d"), 10),
-    dayOfWeek: getDay(d),
-    dayLabel: format(d, "EEE"), // "Sun", "Mon", ...
+  const calendarDates = intervalDays.map((day) => ({
+    date: day,
+    dateStr: format(day, "yyyy-MM-dd"),
+    dayOfMonth: Number(format(day, "d")),
+    dayOfWeek: getDay(day),
+    dayLabel: format(day, "EEE"),
   }));
 
-  const holidaysMap = new Map<string, PublicHoliday>();
-  for (const h of SEED_HOLIDAYS) {
-    holidaysMap.set(h.date, h);
-  }
+  const employeeMap = new Map(input.employees.map((employee) => [employee.id, employee]));
+  const brandMap = new Map(input.brands.map((brand) => [brand.id, brand]));
+  const processMap = new Map(input.processes.map((process) => [process.id, process]));
+  const holidayMap = new Map(input.holidays.map((holiday) => [holiday.date, holiday]));
 
-  // Pre-index employees, brands, processes
-  const employeeMap = new Map<string, Employee>();
-  for (const e of SEED_EMPLOYEES) employeeMap.set(e.id, e);
-
-  const brandMap = new Map<string, Brand>();
-  for (const b of SEED_BRANDS) brandMap.set(b.id, b);
-
-  const processMap = new Map<string, Process>();
-  for (const p of SEED_PROCESSES) processMap.set(p.id, p);
-
-  const issues: ValidationIssue[] = [];
+  const issues: ComputedIssue[] = [];
   const coverageMatrix: DayCoverageStatus[] = [];
   const dailyHealth: DailyHealthSummary[] = [];
   const employeeSchedules: Record<string, ComputedEmployeeDay[]> = {};
+  const allocationCounts = new Map(input.employees.map((employee) => [employee.id, 0]));
 
-  for (const emp of SEED_EMPLOYEES) {
-    employeeSchedules[emp.id] = [];
+  for (const employee of input.employees) {
+    employeeSchedules[employee.id] = [];
   }
 
   let totalRequiredShifts = 0;
   let totalFilledShifts = 0;
 
-  // Track daily allocations to detect double-booking
-  const dailyEmployeeAllocations = new Map<
-    string,
-    Map<string, { brandId: string; processId: string }[]>
-  >();
-
-  for (const { date: currentDate, dateStr, dayOfMonth, dayOfWeek } of calendarDates) {
-    const isHoliday = holidaysMap.has(dateStr);
-    const dayAllocations = new Map<string, { brandId: string; processId: string }[]>();
-    dailyEmployeeAllocations.set(dateStr, dayAllocations);
-
+  for (const { dateStr, dayOfMonth, dayOfWeek } of calendarDates) {
+    const holiday = holidayMap.get(dateStr);
+    const dayAllocations = new Map<string, ComputedAllocation[]>();
     let dayOperatingRules = 0;
     let daySatisfiedRules = 0;
     let dayGapCount = 0;
 
-    // 1. Evaluate coverage rules
-    for (const rule of SEED_RULES) {
-      const brand = brandMap.get(rule.brandId);
-      const proc = processMap.get(rule.processId);
-      if (!brand || !proc) continue;
+    const requirements = input.rules
+      .map((rule) => {
+        const brand = brandMap.get(rule.brandId);
+        const process = processMap.get(rule.processId);
+        if (!brand || !process || !brand.active || !process.active) return null;
 
-      let isOperating = true;
-      if (rule.operatingPattern === "ALL_365") {
-        isOperating = true;
-      } else if (rule.operatingPattern === "DAILY_EXCEPT_HOLIDAYS") {
-        isOperating = !isHoliday;
-      } else if (rule.operatingPattern === "SUNDAYS_AND_HOLIDAYS_OFF") {
-        isOperating = dayOfWeek !== 0 && !isHoliday;
-      }
+        const operating = isRuleOperating(rule, dateStr, dayOfWeek, holiday);
+        const requiredStaffing = operating
+          ? getRequiredStaffing(rule, dateStr, dayOfWeek)
+          : 0;
 
-      if (!isOperating) {
-        coverageMatrix.push({
-          date: dateStr,
-          dayOfMonth,
-          dayOfWeek,
-          brandId: brand.id,
-          brandName: brand.name,
-          brandCode: brand.code,
-          processId: proc.id,
-          processName: proc.name,
-          processCode: proc.code,
-          isOperating: false,
-          requiredStaffing: 0,
-          assignedEmployees: [],
-          isMet: true,
-        });
-        continue;
-      }
-
-      dayOperatingRules++;
-      const requiredStaff = rule.minStaffing;
-      totalRequiredShifts += requiredStaff;
-
-      const eligibleAssignments = customAssignments.filter(
-        (a) => a.active && a.brandId === brand.id && a.processId === proc.id
-      );
-
-      const assignedList: { id: string; name: string }[] = [];
-
-      for (const asgn of eligibleAssignments) {
-        const emp = employeeMap.get(asgn.employeeId);
-        if (!emp || !emp.active) continue;
-
-        // Check approved leave using date-fns isWithinInterval
-        const onLeave = customLeaves.some((l) => {
-          if (l.employeeId !== emp.id || l.status !== "APPROVED") return false;
-          const start = parseISO(l.startDate);
-          const end = parseISO(l.endDate);
-          return isWithinInterval(currentDate, { start, end });
-        });
-
-        // Check approved comp-off using date-fns isSameDay
-        const onCompOff = customCompOffs.some((co) => {
-          if (co.employeeId !== emp.id || co.status !== "APPROVED") return false;
-          return isSameDay(currentDate, parseISO(co.date));
-        });
-
-        // Weekly off check
-        const isWeeklyOff = emp.weeklyOffDay === dayOfWeek;
-
-        if (!onLeave && !onCompOff && !isWeeklyOff) {
-          const existing = dayAllocations.get(emp.id) || [];
-          if (existing.length > 0) {
-            issues.push({
-              id: `overlap-${dateStr}-${emp.id}-${brand.id}-${proc.id}`,
-              date: dateStr,
-              severity: "WARNING",
-              issueType: "OVERLAPPING_ASSIGNMENT",
-              employeeId: emp.id,
-              employeeName: emp.name,
-              brandId: brand.id,
-              brandName: brand.name,
-              processId: proc.id,
-              processName: proc.name,
-              message: `${emp.name} is scheduled for ${brand.name} (${proc.name}) but also assigned to another shift on ${dateStr}.`,
-              suggestion: "Ensure shift hours do not overlap or allocate another qualified team member.",
-            });
-          }
-
-          existing.push({ brandId: brand.id, processId: proc.id });
-          dayAllocations.set(emp.id, existing);
-          assignedList.push({ id: emp.id, name: emp.name });
-
-          if (assignedList.length >= requiredStaff) {
-            break;
-          }
+        if (!operating) {
+          coverageMatrix.push({
+            date: dateStr,
+            dayOfMonth,
+            dayOfWeek,
+            brandId: brand.id,
+            brandName: brand.name,
+            brandCode: brand.code,
+            processId: process.id,
+            processName: process.name,
+            processCode: process.code,
+            isOperating: false,
+            requiredStaffing: 0,
+            assignedEmployees: [],
+            isMet: true,
+          });
+          return null;
         }
+
+        const eligible = input.assignments
+          .filter(
+            (assignment) =>
+              assignment.active &&
+              assignment.brandId === brand.id &&
+              assignment.processId === process.id &&
+              inRange(dateStr, assignment.effectiveFrom, assignment.effectiveTo),
+          )
+          .map((assignment) => employeeMap.get(assignment.employeeId))
+          .filter((employee): employee is EngineEmployee => Boolean(employee))
+          .filter((employee) => {
+            if (!employee.active) return false;
+            if (isApprovedLeave(employee.id, dateStr, input.leaves)) return false;
+            if (isApprovedCompOff(employee.id, dateStr, input.compOffs)) return false;
+            if (isEmployeeWeeklyOff(employee, dateStr, dayOfWeek)) return false;
+            return true;
+          });
+
+        return {
+          rule,
+          brand,
+          process,
+          requiredStaffing,
+          eligible,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((left, right) => left.eligible.length - right.eligible.length || left.rule.id.localeCompare(right.rule.id));
+
+    for (const requirement of requirements) {
+      const { rule, brand, process, requiredStaffing } = requirement;
+      dayOperatingRules++;
+      totalRequiredShifts += requiredStaffing;
+
+      const eligible = [...requirement.eligible].sort((left, right) => {
+        const leftPrimary = input.assignments.some(
+          (assignment) =>
+            assignment.employeeId === left.id &&
+            assignment.brandId === brand.id &&
+            assignment.processId === process.id &&
+            assignment.isPrimary,
+        );
+        const rightPrimary = input.assignments.some(
+          (assignment) =>
+            assignment.employeeId === right.id &&
+            assignment.brandId === brand.id &&
+            assignment.processId === process.id &&
+            assignment.isPrimary,
+        );
+        if (leftPrimary !== rightPrimary) return leftPrimary ? -1 : 1;
+        return (
+          (allocationCounts.get(left.id) ?? 0) - (allocationCounts.get(right.id) ?? 0) ||
+          left.code.localeCompare(right.code)
+        );
+      });
+
+      const assigned: ComputedAllocation[] = [];
+
+      for (const employee of eligible) {
+        if (assigned.length >= requiredStaffing) break;
+        if ((dayAllocations.get(employee.id) ?? []).length > 0) continue;
+
+        const allocation: ComputedAllocation = {
+          brandId: brand.id,
+          brandCode: brand.code,
+          brandName: brand.name,
+          processId: process.id,
+          processCode: process.code,
+          processName: process.name,
+        };
+        assigned.push(allocation);
+        dayAllocations.set(employee.id, [
+          ...(dayAllocations.get(employee.id) ?? []),
+          allocation,
+        ]);
+        allocationCounts.set(employee.id, (allocationCounts.get(employee.id) ?? 0) + 1);
       }
 
-      totalFilledShifts += assignedList.length;
-      const isMet = assignedList.length >= requiredStaff;
+      totalFilledShifts += assigned.length;
+      const isMet = assigned.length >= requiredStaffing;
+      if (isMet) daySatisfiedRules++;
+      else dayGapCount++;
 
-      if (isMet) {
-        daySatisfiedRules++;
-      } else {
-        dayGapCount++;
-        const gap = requiredStaff - assignedList.length;
-        const isSingleResourceBrand = brand.isSingleResource;
-
+      if (!isMet) {
+        const gap = requiredStaffing - assigned.length;
         issues.push({
-          id: `gap-${dateStr}-${brand.id}-${proc.id}`,
+          id: `coverage-${dateStr}-${rule.id}`,
           date: dateStr,
           severity: "ERROR",
           issueType: "COVERAGE_GAP",
           brandId: brand.id,
           brandName: brand.name,
-          processId: proc.id,
-          processName: proc.name,
-          requiredStaffing: requiredStaff,
-          allocatedStaffing: assignedList.length,
-          message: isSingleResourceBrand
-            ? `Single-resource brand ${brand.name} has 0 coverage for ${proc.name} on ${dateStr} (Deficit: ${gap}).`
-            : `Coverage deficit for ${brand.name} on ${proc.name}: ${assignedList.length}/${requiredStaff} allocated.`,
-          suggestion: isSingleResourceBrand
-            ? "Reassign certified backup specialist from Pod pool immediately."
-            : "Adjust employee weekly off or allocate secondary team member.",
+          processId: process.id,
+          processName: process.name,
+          requiredStaffing,
+          allocatedStaffing: assigned.length,
+          message: brand.isSingleResource
+            ? `Single-resource brand ${brand.name} has insufficient coverage for ${process.name} on ${dateStr} (${assigned.length}/${requiredStaffing}; deficit ${gap}).`
+            : `Coverage deficit for ${brand.name} on ${process.name}: ${assigned.length}/${requiredStaffing} allocated.`,
+          suggestion: brand.isSingleResource
+            ? "Assign a certified backup or approve an exception before publishing."
+            : "Adjust availability, weekly offs, or assignments for an eligible employee.",
         });
       }
 
@@ -291,12 +470,21 @@ export function generateNovember2026Roster(
         brandId: brand.id,
         brandName: brand.name,
         brandCode: brand.code,
-        processId: proc.id,
-        processName: proc.name,
-        processCode: proc.code,
+        processId: process.id,
+        processName: process.name,
+        processCode: process.code,
         isOperating: true,
-        requiredStaffing: requiredStaff,
-        assignedEmployees: assignedList,
+        requiredStaffing,
+        assignedEmployees: assigned.map((allocation) => {
+          const employee = [...eligible, ...input.employees].find(
+            (candidate) =>
+              (dayAllocations.get(candidate.id) ?? []).some(
+                (item) =>
+                  item.brandId === allocation.brandId && item.processId === allocation.processId,
+              ),
+          );
+          return { id: employee?.id ?? "", name: employee?.name ?? "Unknown" };
+        }),
         isMet,
       });
     }
@@ -305,122 +493,81 @@ export function generateNovember2026Roster(
       date: dateStr,
       dayOfMonth,
       dayOfWeek,
-      isHoliday,
-      holidayName: holidaysMap.get(dateStr)?.name,
+      isHoliday: Boolean(holiday),
+      holidayName: holiday?.name,
       totalOperatingRules: dayOperatingRules,
       satisfiedRules: daySatisfiedRules,
       hasGap: dayGapCount > 0,
       gapCount: dayGapCount,
     });
 
-    // 2. Individual Employee Schedule for the Day
-    for (const emp of SEED_EMPLOYEES) {
-      const onLeave = customLeaves.find((l) => {
-        if (l.employeeId !== emp.id || l.status !== "APPROVED") return false;
-        return isWithinInterval(currentDate, {
-          start: parseISO(l.startDate),
-          end: parseISO(l.endDate),
-        });
-      });
-
-      const onPendingLeave = customLeaves.find((l) => {
-        if (l.employeeId !== emp.id || l.status !== "PENDING") return false;
-        return isWithinInterval(currentDate, {
-          start: parseISO(l.startDate),
-          end: parseISO(l.endDate),
-        });
-      });
-
-      const onCompOff = customCompOffs.find((co) => {
-        if (co.employeeId !== emp.id || co.status !== "APPROVED") return false;
-        return isSameDay(currentDate, parseISO(co.date));
-      });
-
-      const isWeeklyOff = emp.weeklyOffDay === dayOfWeek;
-      const allocations = dayAllocations.get(emp.id) || [];
+    for (const employee of input.employees) {
+      const approvedLeave = isApprovedLeave(employee.id, dateStr, input.leaves);
+      const pendingLeave = isPendingLeave(employee.id, dateStr, input.leaves);
+      const approvedCompOff = isApprovedCompOff(employee.id, dateStr, input.compOffs);
+      const weeklyOff = isEmployeeWeeklyOff(employee, dateStr, dayOfWeek);
+      const allocations = dayAllocations.get(employee.id) ?? [];
 
       let status: RosterEntryStatus = "UNASSIGNED";
-      let statusLabel = "UA";
-      let detail = "";
+      let detail = "Available / Unassigned";
 
-      if (onLeave) {
+      if (!employee.active) {
+        status = "UNASSIGNED";
+        detail = "Inactive employee";
+      } else if (approvedLeave) {
         status = "LEAVE";
-        statusLabel = "L";
-        detail = `${onLeave.type} Leave (Approved)`;
-      } else if (onCompOff) {
+        detail = `${approvedLeave.type} Leave (Approved)${approvedLeave.reason ? ` — ${approvedLeave.reason}` : ""}`;
+      } else if (approvedCompOff) {
         status = "COMP_OFF";
-        statusLabel = "CO";
-        detail = "Compensatory Off";
+        detail = `Compensatory Off${approvedCompOff.reason ? ` — ${approvedCompOff.reason}` : ""}`;
       } else if (allocations.length > 0) {
         status = "WORKING";
-        statusLabel = "W";
         detail = allocations
-          .map((a) => {
-            const b = brandMap.get(a.brandId);
-            const p = processMap.get(a.processId);
-            return `${b?.code || "BRD"}:${p?.code || "PROC"}`;
-          })
+          .map((allocation) => `${allocation.brandCode}:${allocation.processCode}`)
           .join(", ");
-      } else if (isWeeklyOff) {
+      } else if (weeklyOff) {
         status = "WEEKLY_OFF";
-        statusLabel = "WO";
         detail = "Scheduled Weekly Off";
-      } else if (isHoliday) {
+      } else if (holiday) {
         status = "PUBLIC_HOLIDAY";
-        statusLabel = "PH";
-        detail = holidaysMap.get(dateStr)?.name || "Public Holiday";
-      } else {
-        status = "UNASSIGNED";
-        statusLabel = "UA";
-        detail = "Available / Unassigned";
+        detail = holiday.name;
       }
 
-      if (onPendingLeave && status === "WORKING") {
+      if (pendingLeave && status === "WORKING") {
         issues.push({
-          id: `pending-leave-${dateStr}-${emp.id}`,
+          id: `pending-leave-${dateStr}-${employee.id}-${pendingLeave.id}`,
           date: dateStr,
           severity: "WARNING",
           issueType: "PREFERENCE_VIOLATION",
-          employeeId: emp.id,
-          employeeName: emp.name,
-          message: `${emp.name} has a pending leave request on ${dateStr} but is currently scheduled.`,
-          suggestion: "Review and approve/reject leave request in Availability management.",
+          employeeId: employee.id,
+          employeeName: employee.name,
+          message: `${employee.name} has a pending ${pendingLeave.type} leave request on ${dateStr} but is currently scheduled.`,
+          suggestion: "Review and approve or reject the leave request from Availability & Leaves.",
         });
       }
 
-      const formattedAllocations = allocations.map((a) => {
-        const b = brandMap.get(a.brandId);
-        const p = processMap.get(a.processId);
-        return {
-          brandCode: b?.code || "BRD",
-          processCode: p?.code || "PRC",
-          brandName: b?.name || "Brand",
-          processName: p?.name || "Process",
-        };
-      });
-
-      employeeSchedules[emp.id].push({
+      employeeSchedules[employee.id].push({
         date: dateStr,
         dayOfMonth,
         dayOfWeek,
         status,
-        statusLabel,
-        allocations: formattedAllocations,
+        statusLabel: statusLabel(status),
         detail,
+        allocations,
       });
     }
   }
 
-  const mandatoryErrors = issues.filter((i) => i.severity === "ERROR").length;
-  const warnings = issues.filter((i) => i.severity === "WARNING").length;
+  const mandatoryErrors = issues.filter((issue) => issue.severity === "ERROR").length;
+  const warnings = issues.filter((issue) => issue.severity === "WARNING").length;
   const coverageHealthPercentage =
     totalRequiredShifts > 0
       ? Math.round((totalFilledShifts / totalRequiredShifts) * 100)
       : 100;
 
   return {
-    month,
-    year,
+    month: input.month,
+    year: input.year,
     daysCount: calendarDates.length,
     calendarDates,
     employeeSchedules,
@@ -435,4 +582,8 @@ export function generateNovember2026Roster(
       coverageHealthPercentage,
     },
   };
+}
+
+export function calendarDate(dateStr: string): Date {
+  return dateFromString(dateStr);
 }

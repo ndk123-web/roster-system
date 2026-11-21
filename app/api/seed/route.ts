@@ -1,5 +1,9 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+
+const run = promisify(execFile);
 
 export async function GET() {
   try {
@@ -25,7 +29,7 @@ export async function GET() {
       message:
         employeeCount > 0
           ? "Database contains seeded operational data."
-          : "Database is empty. Run POST /api/seed to populate.",
+          : "Database is empty. Run POST /api/seed with the configured seed token.",
     });
   } catch (error) {
     return NextResponse.json(
@@ -38,22 +42,40 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const configuredToken = process.env.SEED_API_TOKEN;
+  if (!configuredToken) {
+    return NextResponse.json(
+      { status: "error", message: "SEED_API_TOKEN is not configured." },
+      { status: 503 },
+    );
+  }
+
+  if (request.headers.get("x-seed-token") !== configuredToken) {
+    return NextResponse.json({ status: "error", message: "Unauthorized." }, { status: 401 });
+  }
+
   try {
-    // Return confirmation that seeding can be triggered
-    const employeeCount = await prisma.employee.count();
+    const command = process.platform === "win32" ? "npm.cmd" : "npm";
+    await run(command, ["run", "db:seed"], {
+      cwd: process.cwd(),
+      env: process.env,
+      shell: process.platform === "win32",
+      timeout: 120000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+
     return NextResponse.json({
       status: "success",
-      message: "Database seed endpoint ready.",
-      currentEmployees: employeeCount,
+      message: "Database reset and seeded successfully.",
     });
   } catch (error) {
     return NextResponse.json(
       {
         status: "error",
-        message: error instanceof Error ? error.message : "Database error",
+        message: error instanceof Error ? error.message : "Could not seed database.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
