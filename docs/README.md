@@ -187,7 +187,7 @@ Completed verification:
 - `npm run lint` passed.
 - `npx tsc --noEmit` passed.
 - `npm run build` passed with 15/15 static pages generated.
-- Browser smoke tests covered master-data CRUD, availability CRUD, roster generation, roster views, issue persistence, manual edits, allocation removal, and post-change revalidation.
+- Browser smoke tests covered master-data CRUD, availability CRUD, roster generation, roster views, issue persistence, manual edits, allocation removal, post-change revalidation, single-allocation reassignment, working-status-without-allocation rejection, and non-operating-day allocation rejection.
 - Browser console checks showed no runtime errors after final reload.
 - Database was reset with `npm run db:seed` after testing.
 
