@@ -17,6 +17,7 @@ export type EntityFieldType =
   | "text"
   | "email"
   | "date"
+  | "number"
   | "textarea"
   | "select"
   | "checkbox"
@@ -43,6 +44,7 @@ export function EntityFormDialog({
   values,
   action,
   submitLabel = "Save",
+  hiddenFields = {},
 }: {
   open: boolean;
   onClose: () => void;
@@ -52,6 +54,7 @@ export function EntityFormDialog({
   values: EntityValues;
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   submitLabel?: string;
+  hiddenFields?: Record<string, string>;
 }) {
   const [state, formAction] = useActionState(action, initialActionState);
   const formId = useId();
@@ -155,6 +158,9 @@ export function EntityFormDialog({
   return (
     <Dialog open={open} onClose={onClose} title={title} description={description}>
       <form action={formAction} className="space-y-4">
+        {Object.entries(hiddenFields).map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} />
+        ))}
         {typeof values.id === "string" && values.id ? (
           <input type="hidden" name="id" value={values.id} />
         ) : null}

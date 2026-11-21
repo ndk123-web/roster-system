@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { AppHeader } from "@/components/layout/app-header";
-import { getBrandsWithRules } from "@/lib/queries";
+import { getBrandsWithRules, getProcesses } from "@/lib/queries";
 import { BrandsManager } from "@/components/master-data/brands-manager";
 
 export const metadata = {
@@ -10,7 +10,7 @@ export const metadata = {
 export const instant = false;
 
 export default async function BrandsPage() {
-  const brands = await getBrandsWithRules();
+  const [brands, processes] = await Promise.all([getBrandsWithRules(), getProcesses()]);
 
   const singleCount = brands.filter((brand) => brand.isSingleResource).length;
   const multiCount = brands.filter((brand) => !brand.isSingleResource).length;
@@ -38,7 +38,7 @@ export default async function BrandsPage() {
           </div>
         </div>
 
-        <BrandsManager rows={brands} />
+        <BrandsManager rows={brands} processes={processes} />
       </div>
     </AppShell>
   );

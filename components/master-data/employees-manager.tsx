@@ -26,7 +26,10 @@ interface EmployeeRow {
   podId: string | null;
   podName: string | null;
   isLead: boolean;
+  leadsPodName: string | null;
   weeklyOffDays: number[];
+  weeklyOffFrom: string | null;
+  weeklyOffTo: string | null;
 }
 
 interface PodOption {
@@ -69,8 +72,23 @@ export function EmployeesManager({
       name: "podId",
       label: "Operational Pod",
       type: "select",
-      options: [{ value: "", label: "Unassigned" }, ...pods.map((pod) => ({ value: pod.id, label: pod.name }))],
+      options: [
+        { value: "", label: "Unassigned" },
+        ...pods.map((pod) => ({ value: pod.id, label: pod.name })),
+      ],
+      hint: editing?.leadsPodName
+        ? `Lead of ${editing.leadsPodName}; reassign as lead before moving pods.`
+        : undefined,
     },
+    {
+      name: "weeklyOffDays",
+      label: "Weekly Off Days",
+      type: "multiSelect",
+      options: WEEKDAY_NAMES.map((label, value) => ({ value: String(value), label })),
+      hint: "Hold Ctrl/Cmd to select multiple recurring off days.",
+    },
+    { name: "weeklyOffFrom", label: "Weekly Off From", type: "date" },
+    { name: "weeklyOffTo", label: "Weekly Off To", type: "date" },
     { name: "active", label: "Active", type: "checkbox" },
   ];
 
@@ -81,9 +99,12 @@ export function EmployeesManager({
         name: editing.name,
         email: editing.email,
         podId: editing.podId ?? "",
+        weeklyOffDays: editing.weeklyOffDays.map(String),
+        weeklyOffFrom: editing.weeklyOffFrom ?? "",
+        weeklyOffTo: editing.weeklyOffTo ?? "",
         active: editing.active,
       }
-    : { active: true, podId: "" };
+    : { active: true, podId: "", weeklyOffDays: [], weeklyOffFrom: "", weeklyOffTo: "" };
 
   return (
     <div className="bg-white rounded-lg border border-neutral-200 shadow-xs overflow-hidden">

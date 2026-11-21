@@ -12,15 +12,10 @@ import {
 } from "@/components/master-data/entity-form-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { RowActions } from "@/components/master-data/row-actions";
-
-interface BrandRule {
-  processId: string;
-  processName: string;
-  processCode: string;
-  operatingPattern: string;
-  operatesOnHolidays: boolean;
-  defaultMinStaffing: number;
-}
+import {
+  BrandRulesManager,
+  type BrandRuleRow,
+} from "@/components/master-data/brand-rules-manager";
 
 interface BrandRow {
   id: string;
@@ -28,16 +23,16 @@ interface BrandRow {
   name: string;
   active: boolean;
   isSingleResource: boolean;
-  rules: BrandRule[];
+  rules: BrandRuleRow[];
   assignedEmployeeCount: number;
 }
 
-const PATTERN_LABELS: Record<string, string> = {
-  ALL_365: "365-Day Operations",
-  DAILY_EXCEPT_HOLIDAYS: "Daily Except Holidays",
-  SUNDAYS_AND_HOLIDAYS_OFF: "Sundays & Holidays Off",
-  CUSTOM: "Custom Calendar",
-};
+interface ProcessOption {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+}
 
 const fields: EntityField[] = [
   { name: "code", label: "Brand Code", type: "text", required: true, placeholder: "BRD-ALPHA" },
@@ -45,7 +40,13 @@ const fields: EntityField[] = [
   { name: "active", label: "Active", type: "checkbox" },
 ];
 
-export function BrandsManager({ rows }: { rows: BrandRow[] }) {
+export function BrandsManager({
+  rows,
+  processes,
+}: {
+  rows: BrandRow[];
+  processes: ProcessOption[];
+}) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<BrandRow | null>(null);
   const [deleting, setDeleting] = useState<BrandRow | null>(null);
@@ -104,25 +105,12 @@ export function BrandsManager({ rows }: { rows: BrandRow[] }) {
                   </Badge>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex flex-col gap-1">
-                    {brand.rules.length > 0 ? (
-                      brand.rules.map((rule) => (
-                        <div key={rule.processId} className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-[10px] text-neutral-700 bg-neutral-100 px-1.5 py-0.5 rounded">
-                            {rule.processCode}
-                          </span>
-                          <Badge variant="outline">
-                            {PATTERN_LABELS[rule.operatingPattern] ?? rule.operatingPattern}
-                          </Badge>
-                          <span className="text-[10px] text-neutral-400">
-                            min {rule.defaultMinStaffing} staff
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <span className="text-neutral-400 italic">No rules configured</span>
-                    )}
-                  </div>
+                  <BrandRulesManager
+                    brandId={brand.id}
+                    brandName={brand.name}
+                    rules={brand.rules}
+                    processes={processes}
+                  />
                 </td>
                 <td className="px-4 py-3">
                   <Badge variant={brand.active ? "success" : "secondary"}>

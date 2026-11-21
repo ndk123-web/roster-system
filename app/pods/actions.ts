@@ -13,7 +13,7 @@ import {
   type FieldErrors,
 } from "@/lib/mutations/validate";
 
-const PATHS = ["/pods", "/employees", "/dashboard"];
+const PATHS = ["/pods", "/employees", "/dashboard", "/roster"];
 
 function readMemberIds(formData: FormData): string[] {
   return Array.from(
@@ -27,15 +27,20 @@ function readMemberIds(formData: FormData): string[] {
 
 async function validateMembers(
   memberIds: string[],
+  currentPodId: string | null,
   errors: FieldErrors,
 ): Promise<boolean> {
   if (memberIds.length === 0) return true;
   const members = await prisma.employee.findMany({
     where: { id: { in: memberIds } },
-    select: { id: true, active: true },
+    select: { id: true, active: true, leadOfPod: { select: { id: true } } },
   });
   if (members.length !== memberIds.length || members.some((member) => !member.active)) {
     errors.memberIds = "Select only active employees.";
+    return false;
+  }
+  if (members.some((member) => member.leadOfPod && member.leadOfPod.id !== currentPodId)) {
+    errors.memberIds = "Reassign pod leads before adding them to another pod.";
     return false;
   }
   return true;
@@ -81,7 +86,7 @@ export async function createPod(
       return errorState("Fix the highlighted fields.", errors);
     }
     const leadValid = await validateLead(leadId, null, errors);
-    const membersValid = await validateMembers(memberIds, errors);
+    const membersValid = await validateMembers(memberIds, null, errors);
     if (!leadValid || !membersValid || hasErrors(errors)) {
       return errorState("Fix the highlighted fields.", errors);
     }
@@ -133,7 +138,7 @@ export async function updatePod(
       return errorState("Fix the highlighted fields.", errors);
     }
     const leadValid = await validateLead(leadId, id, errors);
-    const membersValid = await validateMembers(memberIds, errors);
+    const membersValid = await validateMembers(memberIds, id, errors);
     if (!leadValid || !membersValid || hasErrors(errors)) {
       return errorState("Fix the highlighted fields.", errors);
     }

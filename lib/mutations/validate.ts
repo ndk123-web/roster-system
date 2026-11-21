@@ -88,6 +88,70 @@ export function readDate(
   return date;
 }
 
+export function readInteger(
+  formData: FormData,
+  name: string,
+  label: string,
+  errors: FieldErrors,
+  options: { required?: boolean; min?: number; max?: number } = {},
+): number | null {
+  const raw = readString(formData, name);
+  if (!raw) {
+    if (options.required) errors[name] = `${label} is required.`;
+    return null;
+  }
+  if (!/^\d+$/.test(raw)) {
+    errors[name] = `${label} must be a whole number.`;
+    return null;
+  }
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value)) {
+    errors[name] = `${label} must be a whole number.`;
+    return null;
+  }
+  if (options.min !== undefined && value < options.min) {
+    errors[name] = `${label} must be at least ${options.min}.`;
+    return null;
+  }
+  if (options.max !== undefined && value > options.max) {
+    errors[name] = `${label} must be ${options.max} or fewer.`;
+    return null;
+  }
+  return value;
+}
+
+export function readDayOfWeekValues(
+  formData: FormData,
+  name: string,
+  label: string,
+  errors: FieldErrors,
+  required = false,
+): number[] {
+  const raw = formData
+    .getAll(name)
+    .filter((value): value is string => typeof value === "string" && /^[0-6]$/.test(value))
+    .map(Number);
+  const supplied = formData
+    .getAll(name)
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+
+  if (supplied.length === 0) {
+    if (required) errors[name] = `Select at least one ${label.toLowerCase()}.`;
+    return [];
+  }
+  if (raw.length !== supplied.length) {
+    errors[name] = `${label} contains an invalid value.`;
+    return [];
+  }
+
+  const unique = [...new Set(raw)].sort((left, right) => left - right);
+  if (unique.length !== raw.length) {
+    errors[name] = `${label} cannot contain duplicates.`;
+    return [];
+  }
+  return unique;
+}
+
 export function hasErrors(errors: FieldErrors): boolean {
   return Object.keys(errors).length > 0;
 }

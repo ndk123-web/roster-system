@@ -27,6 +27,8 @@ export default async function PodsPage() {
             name: employee.name,
             code: employee.code,
             active: employee.active,
+            podName: employee.podName,
+            leadsPodName: employee.leadsPodName,
           }))}
         />
       </div>

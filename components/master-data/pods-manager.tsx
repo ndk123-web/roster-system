@@ -34,6 +34,8 @@ interface EmployeeOption {
   name: string;
   code: string;
   active: boolean;
+  podName: string | null;
+  leadsPodName: string | null;
 }
 
 export function PodsManager({
@@ -64,11 +66,18 @@ export function PodsManager({
     )
     .map((employee) => ({
       value: employee.id,
-      label: `${employee.name} (${employee.code})`,
+      label: `${employee.name} (${employee.code}) · ${employee.podName ?? "Unassigned"}`,
     }));
   const memberOptions = employees
-    .filter((employee) => employee.active)
-    .map((employee) => ({ value: employee.id, label: `${employee.name} (${employee.code})` }));
+    .filter(
+      (employee) =>
+        employee.active &&
+        (!employee.leadsPodName || employee.leadsPodName === editing?.name),
+    )
+    .map((employee) => ({
+      value: employee.id,
+      label: `${employee.name} (${employee.code}) · ${employee.podName ?? "Unassigned"}`,
+    }));
 
   const fields: EntityField[] = [
     { name: "name", label: "Pod Name", type: "text", required: true },
@@ -79,7 +88,7 @@ export function PodsManager({
       label: "Members",
       type: "multiSelect",
       options: memberOptions,
-      hint: "Hold Ctrl/Cmd to select multiple employees.",
+      hint: "Moves replace the employee's current pod. Hold Ctrl/Cmd to select multiple employees.",
     },
   ];
 

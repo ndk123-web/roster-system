@@ -1,5 +1,6 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { errorState, successState, type ActionState } from "@/lib/mutations/action-state";
 import { applyUniqueError, isRecordNotFound } from "@/lib/mutations/prisma-errors";
@@ -7,6 +8,8 @@ import { revalidatePaths } from "@/lib/mutations/revalidate";
 import {
   hasErrors,
   readBoolean,
+  readDate,
+  readDayOfWeekValues,
   readEmail,
   readOptionalId,
   readRequiredId,
@@ -14,7 +17,33 @@ import {
   type FieldErrors,
 } from "@/lib/mutations/validate";
 
-const PATHS = ["/employees", "/pods", "/assignments", "/dashboard"];
+const PATHS = [
+  "/employees",
+  "/pods",
+  "/assignments",
+  "/dashboard",
+  "/availability",
+  "/roster",
+];
+
+async function writeWeeklyOffs(
+  tx: Prisma.TransactionClient,
+  employeeId: string,
+  days: number[],
+  effectiveFrom: Date | null,
+  effectiveTo: Date | null,
+): Promise<void> {
+  await tx.employeeWeeklyOff.deleteMany({ where: { employeeId } });
+  if (days.length === 0) return;
+  await tx.employeeWeeklyOff.createMany({
+    data: days.map((dayOfWeek) => ({
+      employeeId,
+      dayOfWeek,
+      ...(effectiveFrom ? { effectiveFrom } : {}),
+      ...(effectiveTo ? { effectiveTo } : {}),
+    })),
+  });
+}
 
 export async function createEmployee(
   _state: ActionState,
@@ -26,7 +55,18 @@ export async function createEmployee(
   const email = readEmail(formData, "email", "Email", errors);
   const podId = readOptionalId(formData, "podId");
   const active = readBoolean(formData, "active");
+  const weeklyOffDays = readDayOfWeekValues(
+    formData,
+    "weeklyOffDays",
+    "Weekly off days",
+    errors,
+  );
+  const weeklyOffFrom = readDate(formData, "weeklyOffFrom", "Weekly off from", errors, false);
+  const weeklyOffTo = readDate(formData, "weeklyOffTo", "Weekly off to", errors, false);
 
+  if (weeklyOffFrom && weeklyOffTo && weeklyOffTo < weeklyOffFrom) {
+    errors.weeklyOffTo = "Weekly off end must be on or after the start date.";
+  }
   if (hasErrors(errors)) return errorState("Fix the highlighted fields.", errors);
 
   try {
@@ -46,7 +86,10 @@ export async function createEmployee(
         return errorState("Fix the highlighted fields.", errors);
       }
     }
-    await prisma.employee.create({ data: { code, name, email, active, podId } });
+    await prisma.$transaction(async (tx) => {
+      const employee = await tx.employee.create({ data: { code, name, email, active, podId } });
+      await writeWeeklyOffs(tx, employee.id, weeklyOffDays, weeklyOffFrom, weeklyOffTo);
+    });
   } catch (error) {
     if (applyUniqueError(error, { code: "code", email: "email" }, errors)) {
       return errorState("Fix the highlighted fields.", errors);
@@ -71,10 +114,31 @@ export async function updateEmployee(
   const email = readEmail(formData, "email", "Email", errors);
   const podId = readOptionalId(formData, "podId");
   const active = readBoolean(formData, "active");
+  const weeklyOffDays = readDayOfWeekValues(
+    formData,
+    "weeklyOffDays",
+    "Weekly off days",
+    errors,
+  );
+  const weeklyOffFrom = readDate(formData, "weeklyOffFrom", "Weekly off from", errors, false);
+  const weeklyOffTo = readDate(formData, "weeklyOffTo", "Weekly off to", errors, false);
 
+  if (weeklyOffFrom && weeklyOffTo && weeklyOffTo < weeklyOffFrom) {
+    errors.weeklyOffTo = "Weekly off end must be on or after the start date.";
+  }
   if (hasErrors(errors)) return errorState("Fix the highlighted fields.", errors);
 
   try {
+    const existing = await prisma.employee.findUnique({
+      where: { id },
+      select: { podId: true, leadOfPod: { select: { name: true } } },
+    });
+    if (!existing) return errorState("Employee not found.");
+    if (podId !== existing.podId && existing.leadOfPod) {
+      errors.podId = `Reassign this employee as lead of ${existing.leadOfPod.name} before moving pods.`;
+      return errorState("Fix the highlighted fields.", errors);
+    }
+
     const duplicate = await prisma.employee.findFirst({
       where: { OR: [{ code }, { email }], id: { not: id } },
       select: { code: true, email: true },
@@ -91,9 +155,12 @@ export async function updateEmployee(
         return errorState("Fix the highlighted fields.", errors);
       }
     }
-    await prisma.employee.update({
-      where: { id },
-      data: { code, name, email, active, podId },
+    await prisma.$transaction(async (tx) => {
+      await tx.employee.update({
+        where: { id },
+        data: { code, name, email, active, podId },
+      });
+      await writeWeeklyOffs(tx, id, weeklyOffDays, weeklyOffFrom, weeklyOffTo);
     });
   } catch (error) {
     if (isRecordNotFound(error)) return errorState("Employee not found.");
