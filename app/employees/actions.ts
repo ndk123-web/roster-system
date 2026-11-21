@@ -2,10 +2,14 @@
 
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { errorState, successState, type ActionState } from "@/lib/mutations/action-state";
+import {
+  errorState,
+  successStateWithRevalidation,
+  type ActionState,
+} from "@/lib/mutations/action-state";
 import { applyUniqueError, isRecordNotFound } from "@/lib/mutations/prisma-errors";
 import { revalidatePaths } from "@/lib/mutations/revalidate";
-import { revalidateDraftRostersQuietly } from "@/modules/roster/db-service";
+import { revalidateRostersQuietly } from "@/modules/roster/db-service";
 import {
   hasErrors,
   readBoolean,
@@ -99,9 +103,9 @@ export async function createEmployee(
     return errorState("Could not create employee.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState(`Employee ${code} created.`);
+  return successStateWithRevalidation(`Employee ${code} created.`, revalidationError);
 }
 
 export async function updateEmployee(
@@ -173,9 +177,9 @@ export async function updateEmployee(
     return errorState("Could not update employee.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState(`Employee ${code} updated.`);
+  return successStateWithRevalidation(`Employee ${code} updated.`, revalidationError);
 }
 
 export async function deactivateEmployee(
@@ -202,7 +206,7 @@ export async function deactivateEmployee(
     return errorState("Could not deactivate employee.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState("Employee deactivated.");
+  return successStateWithRevalidation("Employee deactivated.", revalidationError);
 }

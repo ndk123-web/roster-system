@@ -2,10 +2,14 @@
 
 import { LeaveStatus, LeaveType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { errorState, successState, type ActionState } from "@/lib/mutations/action-state";
+import {
+  errorState,
+  successStateWithRevalidation,
+  type ActionState,
+} from "@/lib/mutations/action-state";
 import { applyUniqueError, isRecordNotFound } from "@/lib/mutations/prisma-errors";
 import { revalidatePaths } from "@/lib/mutations/revalidate";
-import { revalidateDraftRostersQuietly } from "@/modules/roster/db-service";
+import { revalidateRostersQuietly } from "@/modules/roster/db-service";
 import {
   hasErrors,
   readDate,
@@ -99,9 +103,9 @@ export async function createLeave(
     return errorState("Could not create leave record.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState("Leave record created.");
+  return successStateWithRevalidation("Leave record created.", revalidationError);
 }
 
 export async function updateLeave(
@@ -159,9 +163,9 @@ export async function updateLeave(
     return errorState("Could not update leave record.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState("Leave record updated.");
+  return successStateWithRevalidation("Leave record updated.", revalidationError);
 }
 
 export async function setLeaveStatus(
@@ -181,9 +185,9 @@ export async function setLeaveStatus(
     return errorState("Could not update leave status.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState(`Leave marked ${status.toLowerCase()}.`);
+  return successStateWithRevalidation(`Leave marked ${status.toLowerCase()}.`, revalidationError);
 }
 
 export async function deleteLeave(
@@ -200,9 +204,9 @@ export async function deleteLeave(
     return errorState("Could not delete leave record.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState("Leave record deleted.");
+  return successStateWithRevalidation("Leave record deleted.", revalidationError);
 }
 
 export async function createCompOff(
@@ -239,9 +243,9 @@ export async function createCompOff(
     return errorState("Could not create comp-off record.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState("Comp-off record created.");
+  return successStateWithRevalidation("Comp-off record created.", revalidationError);
 }
 
 export async function updateCompOff(
@@ -283,9 +287,9 @@ export async function updateCompOff(
     return errorState("Could not update comp-off record.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState("Comp-off record updated.");
+  return successStateWithRevalidation("Comp-off record updated.", revalidationError);
 }
 
 export async function setCompOffStatus(
@@ -305,9 +309,12 @@ export async function setCompOffStatus(
     return errorState("Could not update comp-off status.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState(`Comp-off marked ${status.toLowerCase()}.`);
+  return successStateWithRevalidation(
+    `Comp-off marked ${status.toLowerCase()}.`,
+    revalidationError,
+  );
 }
 
 export async function deleteCompOff(
@@ -324,7 +331,7 @@ export async function deleteCompOff(
     return errorState("Could not delete comp-off record.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState("Comp-off record deleted.");
+  return successStateWithRevalidation("Comp-off record deleted.", revalidationError);
 }

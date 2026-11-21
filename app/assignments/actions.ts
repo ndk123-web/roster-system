@@ -1,10 +1,14 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { errorState, successState, type ActionState } from "@/lib/mutations/action-state";
+import {
+  errorState,
+  successStateWithRevalidation,
+  type ActionState,
+} from "@/lib/mutations/action-state";
 import { applyUniqueError, isRecordNotFound } from "@/lib/mutations/prisma-errors";
 import { revalidatePaths } from "@/lib/mutations/revalidate";
-import { revalidateDraftRostersQuietly } from "@/modules/roster/db-service";
+import { revalidateRostersQuietly } from "@/modules/roster/db-service";
 import {
   hasErrors,
   readBoolean,
@@ -92,9 +96,9 @@ export async function createAssignment(
     return errorState("Could not create assignment.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState("Assignment created.");
+  return successStateWithRevalidation("Assignment created.", revalidationError);
 }
 
 export async function updateAssignment(
@@ -177,9 +181,9 @@ export async function updateAssignment(
     return errorState("Could not update assignment.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState("Assignment updated.");
+  return successStateWithRevalidation("Assignment updated.", revalidationError);
 }
 
 export async function deleteAssignment(
@@ -196,7 +200,7 @@ export async function deleteAssignment(
     return errorState("Could not delete assignment.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState("Assignment deleted.");
+  return successStateWithRevalidation("Assignment deleted.", revalidationError);
 }
