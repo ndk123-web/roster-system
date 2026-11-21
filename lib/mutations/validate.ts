@@ -152,6 +152,23 @@ export function readDayOfWeekValues(
   return unique;
 }
 
+export function readEnumValue<T extends string>(
+  formData: FormData,
+  name: string,
+  label: string,
+  errors: FieldErrors,
+  values: readonly T[],
+  fallback?: T,
+): T | null {
+  const value = readString(formData, name);
+  if (!value) return fallback ?? null;
+  if (!values.includes(value as T)) {
+    errors[name] = `${label} is invalid.`;
+    return null;
+  }
+  return value as T;
+}
+
 export function hasErrors(errors: FieldErrors): boolean {
   return Object.keys(errors).length > 0;
 }

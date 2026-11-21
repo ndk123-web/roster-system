@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { errorState, successState, type ActionState } from "@/lib/mutations/action-state";
 import { applyUniqueError, isRecordNotFound } from "@/lib/mutations/prisma-errors";
 import { revalidatePaths } from "@/lib/mutations/revalidate";
+import { revalidateDraftRostersQuietly } from "@/modules/roster/db-service";
 import {
   hasErrors,
   readBoolean,
@@ -133,6 +134,7 @@ export async function createBrand(
     return errorState("Could not create brand.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState(`Brand ${code} created.`);
 }
@@ -170,6 +172,7 @@ export async function updateBrand(
     return errorState("Could not update brand.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState(`Brand ${code} updated.`);
 }
@@ -188,6 +191,7 @@ export async function deactivateBrand(
     return errorState("Could not deactivate brand.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState("Brand deactivated.");
 }
@@ -266,6 +270,7 @@ export async function createBrandRule(
     return errorState("Could not create brand process rule.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState(`Rule created for ${processCode}.`);
 }
@@ -350,6 +355,7 @@ export async function updateBrandRule(
     return errorState("Could not update brand process rule.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState(`Rule updated for ${processCode}.`);
 }
@@ -370,6 +376,7 @@ export async function deleteBrandRule(
     return errorState("Could not delete brand process rule.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState("Brand process rule deleted.");
 }

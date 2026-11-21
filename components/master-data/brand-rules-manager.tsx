@@ -133,10 +133,7 @@ export function BrandRulesManager({
       name: "customStaffingDay",
       label: "Override Weekday",
       type: "select",
-      options: [
-        { value: "", label: "— None —" },
-        ...WEEKDAY_NAMES.map((label, value) => ({ value: String(value), label })),
-      ],
+      options: WEEKDAY_NAMES.map((label, value) => ({ value: String(value), label })),
     },
     { name: "customStaffingDate", label: "Override Date", type: "date" },
     {

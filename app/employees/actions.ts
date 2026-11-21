@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { errorState, successState, type ActionState } from "@/lib/mutations/action-state";
 import { applyUniqueError, isRecordNotFound } from "@/lib/mutations/prisma-errors";
 import { revalidatePaths } from "@/lib/mutations/revalidate";
+import { revalidateDraftRostersQuietly } from "@/modules/roster/db-service";
 import {
   hasErrors,
   readBoolean,
@@ -24,6 +25,7 @@ const PATHS = [
   "/dashboard",
   "/availability",
   "/roster",
+  "/issues",
 ];
 
 async function writeWeeklyOffs(
@@ -97,6 +99,7 @@ export async function createEmployee(
     return errorState("Could not create employee.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState(`Employee ${code} created.`);
 }
@@ -170,6 +173,7 @@ export async function updateEmployee(
     return errorState("Could not update employee.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState(`Employee ${code} updated.`);
 }
@@ -198,6 +202,7 @@ export async function deactivateEmployee(
     return errorState("Could not deactivate employee.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState("Employee deactivated.");
 }

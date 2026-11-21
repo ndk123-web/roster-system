@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { errorState, successState, type ActionState } from "@/lib/mutations/action-state";
 import { applyUniqueError, isRecordNotFound } from "@/lib/mutations/prisma-errors";
 import { revalidatePaths } from "@/lib/mutations/revalidate";
+import { revalidateDraftRostersQuietly } from "@/modules/roster/db-service";
 import {
   hasErrors,
   readBoolean,
@@ -14,7 +15,7 @@ import {
   type FieldErrors,
 } from "@/lib/mutations/validate";
 
-const PATHS = ["/holidays", "/dashboard"];
+const PATHS = ["/holidays", "/dashboard", "/roster", "/issues"];
 
 export async function createHoliday(
   _state: ActionState,
@@ -47,6 +48,7 @@ export async function createHoliday(
     return errorState("Could not create holiday.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState(`Holiday ${name} created.`);
 }
@@ -87,6 +89,7 @@ export async function updateHoliday(
     return errorState("Could not update holiday.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState(`Holiday ${name} updated.`);
 }
@@ -105,6 +108,7 @@ export async function deleteHoliday(
     return errorState("Could not delete holiday.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState("Holiday deleted.");
 }

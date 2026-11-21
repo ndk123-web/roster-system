@@ -13,7 +13,7 @@ import {
   type FieldErrors,
 } from "@/lib/mutations/validate";
 
-const PATHS = ["/pods", "/employees", "/dashboard", "/roster"];
+const PATHS = ["/pods", "/employees", "/dashboard", "/roster", "/issues"];
 
 function readMemberIds(formData: FormData): string[] {
   return Array.from(

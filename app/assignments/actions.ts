@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { errorState, successState, type ActionState } from "@/lib/mutations/action-state";
 import { applyUniqueError, isRecordNotFound } from "@/lib/mutations/prisma-errors";
 import { revalidatePaths } from "@/lib/mutations/revalidate";
+import { revalidateDraftRostersQuietly } from "@/modules/roster/db-service";
 import {
   hasErrors,
   readBoolean,
@@ -12,7 +13,14 @@ import {
   type FieldErrors,
 } from "@/lib/mutations/validate";
 
-const PATHS = ["/assignments", "/brands", "/dashboard"];
+const PATHS = [
+  "/assignments",
+  "/brands",
+  "/employees",
+  "/dashboard",
+  "/roster",
+  "/issues",
+];
 
 export async function createAssignment(
   _state: ActionState,
@@ -84,6 +92,7 @@ export async function createAssignment(
     return errorState("Could not create assignment.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState("Assignment created.");
 }
@@ -168,6 +177,7 @@ export async function updateAssignment(
     return errorState("Could not update assignment.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState("Assignment updated.");
 }
@@ -186,6 +196,7 @@ export async function deleteAssignment(
     return errorState("Could not delete assignment.");
   }
 
+  await revalidateDraftRostersQuietly();
   revalidatePaths(PATHS);
   return successState("Assignment deleted.");
 }
