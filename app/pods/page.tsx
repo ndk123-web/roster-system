@@ -1,89 +1,105 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { AppHeader } from "@/components/layout/app-header";
 import { Badge } from "@/components/ui/badge";
-import { PodIcon, ShieldCheckIcon } from "@/components/ui/icons";
-import { SEED_PODS, SEED_EMPLOYEES } from "@/data/seed-data";
+import { getPodsWithMembers } from "@/lib/queries";
+import { PodIcon, ShieldCheckIcon, UsersIcon } from "@/components/ui/icons";
 
-export default function PodsPage() {
+export const metadata = {
+  title: "Operational Pods | Smart Roster Management",
+};
+
+export default async function PodsPage() {
+  const pods = await getPodsWithMembers();
+
   return (
     <AppShell>
       <AppHeader
-        title="Operational Pods &amp; Pod Leads"
+        title="Operational Pods & Pod Leads"
         subtitle="Team supervisory units, pod lead assignments, and department coverage tracking"
       />
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {SEED_PODS.map((pod) => {
-            const members = SEED_EMPLOYEES.filter((e) => e.podId === pod.id);
-            const lead = SEED_EMPLOYEES.find((e) => e.id === pod.leadId);
+          {pods.map((pod) => {
+            const lead = pod.lead;
+            const regularMembers = pod.employees.filter((e) => e.id !== lead?.id);
 
             return (
               <div
                 key={pod.id}
-                className="bg-white rounded-lg border border-neutral-200 p-5 shadow-xs flex flex-col justify-between"
+                className="bg-white rounded-lg border border-neutral-200 shadow-xs overflow-hidden"
               >
-                <div>
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded bg-neutral-900 text-white">
-                        <PodIcon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold text-neutral-900">
-                          {pod.name}
-                        </h3>
-                        <span className="text-[11px] text-neutral-500">
-                          Supervised by{" "}
-                          <span className="font-semibold text-neutral-800">
-                            {lead?.name || "Unassigned"}
-                          </span>{" "}
-                          (Pod Lead)
-                        </span>
-                      </div>
+                {/* Pod Header */}
+                <div className="px-5 py-4 border-b border-neutral-100 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <PodIcon className="w-4 h-4 text-neutral-700" />
+                      <h3 className="text-sm font-semibold text-neutral-900">{pod.name}</h3>
                     </div>
-
-                    <Badge variant="success">
-                      <ShieldCheckIcon className="w-3 h-3" />
-                      <span>Active Pod</span>
-                    </Badge>
+                    {pod.description && (
+                      <p className="text-[11px] text-neutral-500">{pod.description}</p>
+                    )}
                   </div>
-
-                  <p className="text-xs text-neutral-600 my-3 leading-relaxed">
-                    {pod.description}
-                  </p>
-
-                  {/* Team Members List */}
-                  <div className="mt-3 pt-3 border-t border-neutral-100">
-                    <div className="text-[11px] font-semibold text-neutral-700 mb-1.5 flex items-center justify-between">
-                      <span>Assigned Personnel ({members.length})</span>
-                      <span className="text-neutral-400 font-normal">8 Members per Pod</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {members.map((m) => {
-                        const isLead = m.id === pod.leadId;
-                        return (
-                          <span
-                            key={m.id}
-                            className={`px-2 py-0.5 rounded text-xs ${
-                              isLead
-                                ? "bg-neutral-900 text-white font-medium"
-                                : "bg-neutral-100 text-neutral-800 font-normal"
-                            }`}
-                          >
-                            {m.name} {isLead && "(Lead)"}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <Badge variant={lead ? "success" : "warning"}>
+                    {lead ? (
+                      <>
+                        <ShieldCheckIcon className="w-3 h-3" />
+                        <span>Lead Assigned</span>
+                      </>
+                    ) : (
+                      <span>No Lead</span>
+                    )}
+                  </Badge>
                 </div>
 
-                <div className="mt-5 pt-3 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-500">
-                  <span>Coverage Rate: 95%+</span>
-                  <span className="text-neutral-900 font-semibold cursor-pointer hover:underline">
-                    View Pod Roster →
-                  </span>
+                {/* Pod Lead */}
+                {lead && (
+                  <div className="px-5 py-3 bg-neutral-50/60 border-b border-neutral-100 flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-neutral-900 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                      {lead.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-neutral-900 flex items-center gap-1.5">
+                        {lead.name}
+                        <span className="px-1 py-0.5 bg-neutral-900 text-white text-[8px] rounded font-mono">
+                          POD LEAD
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-neutral-500 font-mono">{lead.code} · {lead.email}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Members */}
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-3 text-xs text-neutral-500 font-semibold">
+                    <UsersIcon className="w-3.5 h-3.5" />
+                    <span>{pod.employees.length} Members</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {regularMembers.map((emp) => (
+                      <div
+                        key={emp.id}
+                        className="flex items-center justify-between py-1.5 border-b border-neutral-50 last:border-0"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-neutral-100 text-neutral-700 text-[9px] font-bold flex items-center justify-center shrink-0">
+                            {emp.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium text-neutral-900">{emp.name}</div>
+                            <div className="text-[10px] text-neutral-400 font-mono">{emp.code}</div>
+                          </div>
+                        </div>
+                        <Badge variant={emp.active ? "success" : "secondary"}>
+                          {emp.active ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                    ))}
+                    {regularMembers.length === 0 && (
+                      <p className="text-[11px] text-neutral-400 italic">No additional members</p>
+                    )}
+                  </div>
                 </div>
               </div>
             );

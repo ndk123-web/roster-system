@@ -1,11 +1,17 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { AppHeader } from "@/components/layout/app-header";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { getPublicHolidays } from "@/lib/queries";
 import { ShieldCheckIcon } from "@/components/ui/icons";
-import { SEED_HOLIDAYS } from "@/data/seed-data";
+import { format, parseISO } from "date-fns";
 
-export default function HolidaysPage() {
+export const metadata = {
+  title: "Public Holidays | Smart Roster Management",
+};
+
+export default async function HolidaysPage() {
+  const holidays = await getPublicHolidays();
+
   return (
     <AppShell>
       <AppHeader
@@ -21,61 +27,67 @@ export default function HolidaysPage() {
               <ShieldCheckIcon className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xs font-semibold text-neutral-900">
-                Brand-Process Holiday Applicability Rule (PRD Section 5 FR-07)
-              </h2>
-              <p className="text-xs text-neutral-600 mt-0.5 leading-relaxed">
-                A public holiday does not automatically shut down all client accounts. Brands operating under a 365-day schedule continue to mandate coverage, while brands configured with &ldquo;Daily except public holidays&rdquo; or &ldquo;Sundays &amp; holidays off&rdquo; will release personnel from work.
+              <div className="text-sm font-semibold text-neutral-900 mb-1">
+                Holiday Impact on Scheduling
+              </div>
+              <p className="text-xs text-neutral-500 leading-relaxed">
+                Public holidays affect operating calendars based on each brand-process rule. Brands
+                configured as <strong>ALL_365</strong> operate even on holidays. Brands with{" "}
+                <strong>DAILY_EXCEPT_HOLIDAYS</strong> or <strong>SUNDAYS_AND_HOLIDAYS_OFF</strong>{" "}
+                patterns are exempt.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Holidays Table */}
+        {/* Holidays List */}
         <div className="bg-white rounded-lg border border-neutral-200 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-neutral-900">
-              Configured Holidays for November 2026
-            </h3>
-            <Button variant="outline" size="sm">
-              <span>+ Add Holiday</span>
-            </Button>
+          <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-neutral-900">
+              Configured Holidays
+            </h2>
+            <span className="text-xs font-mono text-neutral-500 tabular-nums">
+              {holidays.length} holiday{holidays.length !== 1 ? "s" : ""}
+            </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-neutral-50/90 border-b border-neutral-200 font-semibold text-neutral-900">
-                  <th className="px-4 py-3">Calendar Date</th>
-                  <th className="px-4 py-3">Holiday Name</th>
-                  <th className="px-4 py-3">Applicability Scope</th>
-                  <th className="px-4 py-3 text-right">Rule Effect</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {SEED_HOLIDAYS.map((h) => (
-                  <tr key={h.date} className="hover:bg-neutral-50/50 transition-colors">
-                    <td className="px-4 py-3 font-mono font-bold text-neutral-900 tabular-nums">
-                      {h.date}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-neutral-900">
-                      {h.name}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-600">
-                      {h.affectsAllProcesses
-                        ? "All processes observing national holidays"
-                        : "Custom process selection"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Badge variant="secondary">
-                        <span>Exempts Non-365 Brands</span>
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {holidays.length === 0 ? (
+            <div className="p-8 text-center text-sm text-neutral-400">
+              No public holidays configured.
+            </div>
+          ) : (
+            <div className="divide-y divide-neutral-100">
+              {holidays.map((holiday) => (
+                <div
+                  key={holiday.id}
+                  className="px-5 py-4 flex items-center justify-between hover:bg-neutral-50/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="text-center bg-neutral-100 rounded-md px-3 py-2 min-w-[56px]">
+                      <div className="text-[10px] font-mono text-neutral-500 uppercase">
+                        {format(parseISO(holiday.date), "MMM")}
+                      </div>
+                      <div className="text-lg font-bold text-neutral-900 tabular-nums leading-none">
+                        {format(parseISO(holiday.date), "d")}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-semibold text-neutral-900 text-sm">{holiday.name}</div>
+                      <div className="text-xs text-neutral-500 font-mono">
+                        {format(parseISO(holiday.date), "EEEE, MMMM d, yyyy")}
+                      </div>
+                      {holiday.description && (
+                        <div className="text-[11px] text-neutral-400 mt-0.5">{holiday.description}</div>
+                      )}
+                    </div>
+                  </div>
+                  <Badge variant={holiday.affectsAllProcesses ? "default" : "outline"}>
+                    {holiday.affectsAllProcesses ? "Affects All Processes" : "Selective Impact"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </AppShell>

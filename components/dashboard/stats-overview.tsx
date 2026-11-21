@@ -6,29 +6,50 @@ import {
 } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/badge";
 
-export function StatsOverview() {
+interface StatsOverviewProps {
+  totalEmployees: number;
+  activeEmployees: number;
+  totalBrands: number;
+  totalProcesses: number;
+  singleResourceBrandsCount: number;
+  multiResourceBrandsCount: number;
+  pendingLeaves: number;
+}
+
+export function StatsOverview({
+  totalEmployees,
+  activeEmployees,
+  totalBrands,
+  totalProcesses,
+  singleResourceBrandsCount,
+  multiResourceBrandsCount,
+  pendingLeaves,
+}: StatsOverviewProps) {
+  const activeRate =
+    totalEmployees > 0 ? Math.round((activeEmployees / totalEmployees) * 100) : 0;
+
   const stats = [
     {
       title: "Total Workforce",
-      value: "32",
+      value: String(totalEmployees),
       metricDetail: "Active Employees",
-      subtext: "Distributed across 4 operational pods",
+      subtext: `Distributed across 4 operational pods`,
       icon: UsersIcon,
-      badge: "100% Active",
-      badgeVariant: "success" as const,
+      badge: `${activeRate}% Active`,
+      badgeVariant: activeRate === 100 ? ("success" as const) : ("warning" as const),
     },
     {
       title: "D2C Client Brands",
-      value: "15",
+      value: String(totalBrands),
       metricDetail: "Configured Accounts",
-      subtext: "12 single-resource (80%), 3 multi-resource (20%)",
+      subtext: `${singleResourceBrandsCount} single-resource, ${multiResourceBrandsCount} multi-resource`,
       icon: BuildingIcon,
       badge: "80 / 20 Model",
       badgeVariant: "secondary" as const,
     },
     {
       title: "Active Processes",
-      value: "4",
+      value: String(totalProcesses),
       metricDetail: "Core Workflows",
       subtext: "CS, ACC, NDR, Retention (configurable rules)",
       icon: ProcessIcon,
@@ -36,13 +57,13 @@ export function StatsOverview() {
       badgeVariant: "secondary" as const,
     },
     {
-      title: "Constraint Telemetry",
-      value: "3",
-      metricDetail: "Unresolved Gaps",
-      subtext: "2 mandatory coverage gaps, 1 schedule overlap",
+      title: "Leave Requests",
+      value: String(pendingLeaves),
+      metricDetail: "Pending Review",
+      subtext: pendingLeaves > 0 ? "Review required before roster publish" : "No pending leave requests",
       icon: AlertIcon,
-      badge: "Action Required",
-      badgeVariant: "error" as const,
+      badge: pendingLeaves > 0 ? "Action Required" : "All Clear",
+      badgeVariant: pendingLeaves > 0 ? ("error" as const) : ("success" as const),
     },
   ];
 
@@ -82,7 +103,7 @@ export function StatsOverview() {
               <Badge variant={stat.badgeVariant}>
                 {stat.badge}
               </Badge>
-              <span className="text-[11px] text-neutral-400">Live Status</span>
+              <span className="text-[11px] text-neutral-400">Live DB</span>
             </div>
           </div>
         );

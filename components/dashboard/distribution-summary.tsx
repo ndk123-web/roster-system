@@ -1,6 +1,21 @@
 import { BuildingIcon, ShieldCheckIcon } from "@/components/ui/icons";
 
-export function DistributionSummary() {
+interface DistributionSummaryProps {
+  singleResource: number;
+  multiResource: number;
+  totalBrands: number;
+  totalEmployees: number;
+}
+
+export function DistributionSummary({
+  singleResource,
+  multiResource,
+  totalBrands,
+  totalEmployees,
+}: DistributionSummaryProps) {
+  const singlePct = totalBrands > 0 ? Math.round((singleResource / totalBrands) * 100) : 0;
+  const multiPct = totalBrands > 0 ? Math.round((multiResource / totalBrands) * 100) : 0;
+
   return (
     <div className="bg-white rounded-lg border border-neutral-200 shadow-xs p-5 flex flex-col justify-between">
       <div>
@@ -15,7 +30,7 @@ export function DistributionSummary() {
             </p>
           </div>
           <span className="text-[11px] font-mono text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded">
-            PRD Core Metric
+            Live DB
           </span>
         </div>
 
@@ -27,11 +42,14 @@ export function DistributionSummary() {
                 Single-Resource Brands (80% Target)
               </span>
               <span className="font-mono text-neutral-900 font-semibold tabular-nums">
-                12 of 15 Brands (80%)
+                {singleResource} of {totalBrands} Brands ({singlePct}%)
               </span>
             </div>
             <div className="w-full bg-neutral-100 h-2 rounded-full overflow-hidden">
-              <div className="bg-neutral-900 h-full rounded-full" style={{ width: "80%" }} />
+              <div
+                className="bg-neutral-900 h-full rounded-full transition-all duration-500"
+                style={{ width: `${singlePct}%` }}
+              />
             </div>
             <p className="text-[11px] text-neutral-500 mt-1">
               Managed by 1 dedicated employee handling all brand processes. Highest sensitivity to unplanned leave.
@@ -44,40 +62,41 @@ export function DistributionSummary() {
                 Multi-Resource Brands (20% Target)
               </span>
               <span className="font-mono text-neutral-900 font-semibold tabular-nums">
-                3 of 15 Brands (20%)
+                {multiResource} of {totalBrands} Brands ({multiPct}%)
               </span>
             </div>
             <div className="w-full bg-neutral-100 h-2 rounded-full overflow-hidden">
-              <div className="bg-neutral-400 h-full rounded-full" style={{ width: "20%" }} />
+              <div
+                className="bg-neutral-400 h-full rounded-full transition-all duration-500"
+                style={{ width: `${multiPct}%` }}
+              />
             </div>
             <p className="text-[11px] text-neutral-500 mt-1">
-              2 to 3 employees assigned to specific or overlapping processes (CS, ACC, NDR).
+              2–3 employees assigned to specific or overlapping processes (CS, ACC, NDR).
             </p>
           </div>
         </div>
 
-        {/* Operating Calendars Breakdown */}
+        {/* Summary */}
         <div className="mt-5 pt-4 border-t border-neutral-100">
           <div className="text-xs font-semibold text-neutral-900 mb-2">
-            Configured Operating Calendars
+            Workforce Configuration
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid grid-cols-2 gap-2 text-center">
             <div className="p-2.5 rounded bg-neutral-50 border border-neutral-200/60">
-              <div className="text-sm font-bold font-mono text-neutral-900 tabular-nums">7</div>
+              <div className="text-sm font-bold font-mono text-neutral-900 tabular-nums">
+                {totalBrands}
+              </div>
               <div className="text-[10px] text-neutral-500 uppercase tracking-tight mt-0.5">
-                365-Day Operations
+                Active Brands
               </div>
             </div>
             <div className="p-2.5 rounded bg-neutral-50 border border-neutral-200/60">
-              <div className="text-sm font-bold font-mono text-neutral-900 tabular-nums">5</div>
-              <div className="text-[10px] text-neutral-500 uppercase tracking-tight mt-0.5">
-                Excl. Public Holidays
+              <div className="text-sm font-bold font-mono text-neutral-900 tabular-nums">
+                {totalEmployees}
               </div>
-            </div>
-            <div className="p-2.5 rounded bg-neutral-50 border border-neutral-200/60">
-              <div className="text-sm font-bold font-mono text-neutral-900 tabular-nums">3</div>
               <div className="text-[10px] text-neutral-500 uppercase tracking-tight mt-0.5">
-                Sun &amp; Holidays Off
+                Active Employees
               </div>
             </div>
           </div>
