@@ -73,6 +73,8 @@ export interface AssignmentRow {
   processCode: string;
   isPrimary: boolean;
   active: boolean;
+  effectiveFrom: string;
+  effectiveTo: string | null;
 }
 
 export interface LeaveRow {
@@ -229,7 +231,7 @@ export async function getPodsWithMembers() {
   await connection();
   return prisma.pod.findMany({
     include: {
-      lead: { select: { id: true, name: true, code: true, email: true } },
+      lead: { select: { id: true, name: true, code: true, email: true, active: true } },
       employees: {
         select: { id: true, name: true, code: true, email: true, active: true },
         orderBy: { code: "asc" },
@@ -310,7 +312,36 @@ export async function getAssignments(): Promise<AssignmentRow[]> {
     processCode: r.process.code,
     isPrimary: r.isPrimary,
     active: r.active,
+    effectiveFrom: format(r.effectiveFrom, "yyyy-MM-dd"),
+    effectiveTo: r.effectiveTo ? format(r.effectiveTo, "yyyy-MM-dd") : null,
   }));
+}
+
+export async function getActiveEmployeeOptions() {
+  await connection();
+  return prisma.employee.findMany({
+    where: { active: true },
+    select: { id: true, name: true, code: true },
+    orderBy: { code: "asc" },
+  });
+}
+
+export async function getActiveBrandOptions() {
+  await connection();
+  return prisma.brand.findMany({
+    where: { active: true },
+    select: { id: true, name: true, code: true },
+    orderBy: { code: "asc" },
+  });
+}
+
+export async function getActiveProcessOptions() {
+  await connection();
+  return prisma.process.findMany({
+    where: { active: true },
+    select: { id: true, name: true, code: true },
+    orderBy: { code: "asc" },
+  });
 }
 
 // ─── Leaves & CompOffs ────────────────────────────────────────────────────────
