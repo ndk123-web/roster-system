@@ -9,6 +9,8 @@ export const metadata = {
   title: "Availability & Leave | Smart Roster Management",
 };
 
+export const instant = false;
+
 function LeaveStatusBadge({ status }: { status: string }) {
   if (status === "APPROVED") return <Badge variant="error">Approved (Unavailable)</Badge>;
   if (status === "PENDING") return <Badge variant="warning">Pending Review</Badge>;
