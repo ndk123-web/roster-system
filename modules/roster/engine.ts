@@ -1,6 +1,17 @@
 // Deterministic Roster Generation & Constraint Engine
+// Powered by date-fns for robust calendar expansion & date calculations
 // Docs: docs/prd.md Section 6.3
 
+import {
+  eachDayOfInterval,
+  startOfMonth,
+  endOfMonth,
+  format,
+  getDay,
+  parseISO,
+  isWithinInterval,
+  isSameDay,
+} from "date-fns";
 import type {
   Employee,
   Brand,
@@ -29,8 +40,10 @@ export interface DayCoverageStatus {
   dayOfWeek: number; // 0=Sun, 1=Mon, ..., 6=Sat
   brandId: string;
   brandName: string;
+  brandCode: string;
   processId: string;
   processName: string;
+  processCode: string;
   isOperating: boolean;
   requiredStaffing: number;
   assignedEmployees: { id: string; name: string }[];
@@ -43,16 +56,35 @@ export interface ComputedEmployeeDay {
   dayOfWeek: number;
   status: RosterEntryStatus;
   statusLabel: string;
-  allocations: { brandCode: string; processCode: string; brandName: string; processName: string }[];
+  allocations: {
+    brandCode: string;
+    processCode: string;
+    brandName: string;
+    processName: string;
+  }[];
   detail?: string;
+}
+
+export interface DailyHealthSummary {
+  date: string;
+  dayOfMonth: number;
+  dayOfWeek: number;
+  isHoliday: boolean;
+  holidayName?: string;
+  totalOperatingRules: number;
+  satisfiedRules: number;
+  hasGap: boolean;
+  gapCount: number;
 }
 
 export interface GenerationResult {
   month: number;
   year: number;
   daysCount: number;
+  calendarDates: { date: Date; dateStr: string; dayOfMonth: number; dayOfWeek: number; dayLabel: string }[];
   employeeSchedules: Record<string, ComputedEmployeeDay[]>;
   coverageMatrix: DayCoverageStatus[];
+  dailyHealth: DailyHealthSummary[];
   issues: ValidationIssue[];
   status: "DRAFT" | "ISSUES_FOUND" | "PUBLISHED";
   summary: {
@@ -69,22 +101,22 @@ export function generateNovember2026Roster(
   customAssignments: EmployeeAssignment[] = SEED_ASSIGNMENTS
 ): GenerationResult {
   const year = 2026;
-  const month = 11; // November
-  const daysInMonth = 30;
+  const month = 11; // November 2026
+  const baseDate = new Date(year, month - 1, 1);
 
-  // Build calendar dates for Nov 2026
-  const dates: { dateStr: string; dayOfMonth: number; dayOfWeek: number }[] = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    const pad = d < 10 ? `0${d}` : `${d}`;
-    const dateStr = `2026-11-${pad}`;
-    // 2026-11-01 was a Sunday (0)
-    const dt = new Date(`${dateStr}T12:00:00Z`);
-    dates.push({
-      dateStr,
-      dayOfMonth: d,
-      dayOfWeek: dt.getUTCDay(),
-    });
-  }
+  // Generate all month dates using date-fns
+  const intervalDays = eachDayOfInterval({
+    start: startOfMonth(baseDate),
+    end: endOfMonth(baseDate),
+  });
+
+  const calendarDates = intervalDays.map((d) => ({
+    date: d,
+    dateStr: format(d, "yyyy-MM-dd"),
+    dayOfMonth: parseInt(format(d, "d"), 10),
+    dayOfWeek: getDay(d),
+    dayLabel: format(d, "EEE"), // "Sun", "Mon", ...
+  }));
 
   const holidaysMap = new Map<string, PublicHoliday>();
   for (const h of SEED_HOLIDAYS) {
@@ -103,9 +135,9 @@ export function generateNovember2026Roster(
 
   const issues: ValidationIssue[] = [];
   const coverageMatrix: DayCoverageStatus[] = [];
+  const dailyHealth: DailyHealthSummary[] = [];
   const employeeSchedules: Record<string, ComputedEmployeeDay[]> = {};
 
-  // Initialize schedule arrays
   for (const emp of SEED_EMPLOYEES) {
     employeeSchedules[emp.id] = [];
   }
@@ -113,22 +145,27 @@ export function generateNovember2026Roster(
   let totalRequiredShifts = 0;
   let totalFilledShifts = 0;
 
-  // Track daily employee work assignments to detect overlaps: dateStr -> employeeId -> string[] (allocations)
-  const dailyEmployeeAllocations = new Map<string, Map<string, { brandId: string; processId: string }[]>>();
+  // Track daily allocations to detect double-booking
+  const dailyEmployeeAllocations = new Map<
+    string,
+    Map<string, { brandId: string; processId: string }[]>
+  >();
 
-  // Process day by day
-  for (const { dateStr, dayOfMonth, dayOfWeek } of dates) {
+  for (const { date: currentDate, dateStr, dayOfMonth, dayOfWeek } of calendarDates) {
     const isHoliday = holidaysMap.has(dateStr);
     const dayAllocations = new Map<string, { brandId: string; processId: string }[]>();
     dailyEmployeeAllocations.set(dateStr, dayAllocations);
 
-    // 1. Evaluate coverage requirements for each configured rule
+    let dayOperatingRules = 0;
+    let daySatisfiedRules = 0;
+    let dayGapCount = 0;
+
+    // 1. Evaluate coverage rules
     for (const rule of SEED_RULES) {
       const brand = brandMap.get(rule.brandId);
       const proc = processMap.get(rule.processId);
       if (!brand || !proc) continue;
 
-      // Determine if operating
       let isOperating = true;
       if (rule.operatingPattern === "ALL_365") {
         isOperating = true;
@@ -145,8 +182,10 @@ export function generateNovember2026Roster(
           dayOfWeek,
           brandId: brand.id,
           brandName: brand.name,
+          brandCode: brand.code,
           processId: proc.id,
           processName: proc.name,
+          processCode: proc.code,
           isOperating: false,
           requiredStaffing: 0,
           assignedEmployees: [],
@@ -155,10 +194,10 @@ export function generateNovember2026Roster(
         continue;
       }
 
+      dayOperatingRules++;
       const requiredStaff = rule.minStaffing;
       totalRequiredShifts += requiredStaff;
 
-      // Find assigned employees
       const eligibleAssignments = customAssignments.filter(
         (a) => a.active && a.brandId === brand.id && a.processId === proc.id
       );
@@ -169,31 +208,28 @@ export function generateNovember2026Roster(
         const emp = employeeMap.get(asgn.employeeId);
         if (!emp || !emp.active) continue;
 
-        // Check availability
-        // A. Approved leave?
-        const onLeave = customLeaves.some(
-          (l) =>
-            l.employeeId === emp.id &&
-            l.status === "APPROVED" &&
-            dateStr >= l.startDate &&
-            dateStr <= l.endDate
-        );
+        // Check approved leave using date-fns isWithinInterval
+        const onLeave = customLeaves.some((l) => {
+          if (l.employeeId !== emp.id || l.status !== "APPROVED") return false;
+          const start = parseISO(l.startDate);
+          const end = parseISO(l.endDate);
+          return isWithinInterval(currentDate, { start, end });
+        });
 
-        // B. Approved comp-off?
-        const onCompOff = customCompOffs.some(
-          (co) => co.employeeId === emp.id && co.status === "APPROVED" && co.date === dateStr
-        );
+        // Check approved comp-off using date-fns isSameDay
+        const onCompOff = customCompOffs.some((co) => {
+          if (co.employeeId !== emp.id || co.status !== "APPROVED") return false;
+          return isSameDay(currentDate, parseISO(co.date));
+        });
 
-        // C. Weekly off?
+        // Weekly off check
         const isWeeklyOff = emp.weeklyOffDay === dayOfWeek;
 
         if (!onLeave && !onCompOff && !isWeeklyOff) {
-          // Check if already allocated to another incompatible assignment today
           const existing = dayAllocations.get(emp.id) || [];
           if (existing.length > 0) {
-            // Overlapping assignment detected!
             issues.push({
-              id: `overlap-${dateStr}-${emp.id}`,
+              id: `overlap-${dateStr}-${emp.id}-${brand.id}-${proc.id}`,
               date: dateStr,
               severity: "WARNING",
               issueType: "OVERLAPPING_ASSIGNMENT",
@@ -203,8 +239,8 @@ export function generateNovember2026Roster(
               brandName: brand.name,
               processId: proc.id,
               processName: proc.name,
-              message: `${emp.name} is scheduled for ${brand.name} (${proc.name}) but also has another assignment on ${dateStr}.`,
-              suggestion: "Ensure non-overlapping work hours or reassign to an alternate specialist.",
+              message: `${emp.name} is scheduled for ${brand.name} (${proc.name}) but also assigned to another shift on ${dateStr}.`,
+              suggestion: "Ensure shift hours do not overlap or allocate another qualified team member.",
             });
           }
 
@@ -213,7 +249,7 @@ export function generateNovember2026Roster(
           assignedList.push({ id: emp.id, name: emp.name });
 
           if (assignedList.length >= requiredStaff) {
-            break; // met requirement
+            break;
           }
         }
       }
@@ -221,11 +257,13 @@ export function generateNovember2026Roster(
       totalFilledShifts += assignedList.length;
       const isMet = assignedList.length >= requiredStaff;
 
-      // If understaffed, flag mandatory error!
-      if (!isMet) {
+      if (isMet) {
+        daySatisfiedRules++;
+      } else {
+        dayGapCount++;
         const gap = requiredStaff - assignedList.length;
         const isSingleResourceBrand = brand.isSingleResource;
-        
+
         issues.push({
           id: `gap-${dateStr}-${brand.id}-${proc.id}`,
           date: dateStr,
@@ -241,7 +279,7 @@ export function generateNovember2026Roster(
             ? `Single-resource brand ${brand.name} has 0 coverage for ${proc.name} on ${dateStr} (Deficit: ${gap}).`
             : `Coverage deficit for ${brand.name} on ${proc.name}: ${assignedList.length}/${requiredStaff} allocated.`,
           suggestion: isSingleResourceBrand
-            ? "Reassign backup specialist from Pod pool immediately."
+            ? "Reassign certified backup specialist from Pod pool immediately."
             : "Adjust employee weekly off or allocate secondary team member.",
         });
       }
@@ -252,8 +290,10 @@ export function generateNovember2026Roster(
         dayOfWeek,
         brandId: brand.id,
         brandName: brand.name,
+        brandCode: brand.code,
         processId: proc.id,
         processName: proc.name,
+        processCode: proc.code,
         isOperating: true,
         requiredStaffing: requiredStaff,
         assignedEmployees: assignedList,
@@ -261,27 +301,40 @@ export function generateNovember2026Roster(
       });
     }
 
-    // 2. Compute individual employee day status
+    dailyHealth.push({
+      date: dateStr,
+      dayOfMonth,
+      dayOfWeek,
+      isHoliday,
+      holidayName: holidaysMap.get(dateStr)?.name,
+      totalOperatingRules: dayOperatingRules,
+      satisfiedRules: daySatisfiedRules,
+      hasGap: dayGapCount > 0,
+      gapCount: dayGapCount,
+    });
+
+    // 2. Individual Employee Schedule for the Day
     for (const emp of SEED_EMPLOYEES) {
-      const onLeave = customLeaves.find(
-        (l) =>
-          l.employeeId === emp.id &&
-          l.status === "APPROVED" &&
-          dateStr >= l.startDate &&
-          dateStr <= l.endDate
-      );
+      const onLeave = customLeaves.find((l) => {
+        if (l.employeeId !== emp.id || l.status !== "APPROVED") return false;
+        return isWithinInterval(currentDate, {
+          start: parseISO(l.startDate),
+          end: parseISO(l.endDate),
+        });
+      });
 
-      const onPendingLeave = customLeaves.find(
-        (l) =>
-          l.employeeId === emp.id &&
-          l.status === "PENDING" &&
-          dateStr >= l.startDate &&
-          dateStr <= l.endDate
-      );
+      const onPendingLeave = customLeaves.find((l) => {
+        if (l.employeeId !== emp.id || l.status !== "PENDING") return false;
+        return isWithinInterval(currentDate, {
+          start: parseISO(l.startDate),
+          end: parseISO(l.endDate),
+        });
+      });
 
-      const onCompOff = customCompOffs.find(
-        (co) => co.employeeId === emp.id && co.status === "APPROVED" && co.date === dateStr
-      );
+      const onCompOff = customCompOffs.find((co) => {
+        if (co.employeeId !== emp.id || co.status !== "APPROVED") return false;
+        return isSameDay(currentDate, parseISO(co.date));
+      });
 
       const isWeeklyOff = emp.weeklyOffDay === dayOfWeek;
       const allocations = dayAllocations.get(emp.id) || [];
@@ -360,7 +413,6 @@ export function generateNovember2026Roster(
 
   const mandatoryErrors = issues.filter((i) => i.severity === "ERROR").length;
   const warnings = issues.filter((i) => i.severity === "WARNING").length;
-
   const coverageHealthPercentage =
     totalRequiredShifts > 0
       ? Math.round((totalFilledShifts / totalRequiredShifts) * 100)
@@ -369,9 +421,11 @@ export function generateNovember2026Roster(
   return {
     month,
     year,
-    daysCount: daysInMonth,
+    daysCount: calendarDates.length,
+    calendarDates,
     employeeSchedules,
     coverageMatrix,
+    dailyHealth,
     issues,
     status: mandatoryErrors > 0 ? "ISSUES_FOUND" : "DRAFT",
     summary: {
