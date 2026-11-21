@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   calendarDate,
   generateMonthlyRoster,
+  isRuleOperating,
   type ComputedEmployeeDay,
   type ComputedIssue,
   type DayCoverageStatus,
@@ -318,15 +319,16 @@ export async function validateAndSaveRoster(
   month: number,
   year: number,
 ): Promise<RosterValidationSummary> {
-  const [input, roster] = await Promise.all([
+  const [input, roster, allEmployees] = await Promise.all([
     loadGenerationInput(month, year),
     prisma.roster.findUnique({
       where: { month_year: { month, year } },
       select: { id: true, status: true },
     }),
+    prisma.employee.findMany({ select: { id: true, name: true } }),
   ]);
 
-  if (!roster || roster.status === "PUBLISHED") return { errors: 0, warnings: 0 };
+  if (!roster) return { errors: 0, warnings: 0 };
 
   const [baseline, entries] = await Promise.all([
     Promise.resolve(generateMonthlyRoster(input)),
@@ -337,7 +339,7 @@ export async function validateAndSaveRoster(
   ]);
 
   const employeeMap = new Map(input.employees.map((employee) => [employee.id, employee]));
-  const employeeNames = new Map(input.employees.map((employee) => [employee.id, employee.name]));
+  const employeeNames = new Map(allEmployees.map((employee) => [employee.id, employee.name]));
   const brandMap = new Map(input.brands.map((brand) => [brand.id, brand]));
   const processMap = new Map(input.processes.map((process) => [process.id, process]));
   const issues: ComputedIssue[] = [];
@@ -358,6 +360,32 @@ export async function validateAndSaveRoster(
         employeeName,
         message: `${employeeName} is inactive but remains in the roster.`,
         suggestion: "Remove or replace this employee before publishing.",
+      });
+    }
+
+    if (entry.status === "WORKING" && entry.allocations.length === 0) {
+      issues.push({
+        id: `working-without-allocation-${entry.id}`,
+        date: dateStr,
+        severity: "ERROR",
+        issueType: "PREFERENCE_VIOLATION",
+        employeeId: entry.employeeId,
+        employeeName,
+        message: `${employeeName} is marked working without a brand-process allocation.`,
+        suggestion: "Assign an eligible brand and process or change the status.",
+      });
+    }
+
+    if (entry.status !== "WORKING" && entry.allocations.length > 0) {
+      issues.push({
+        id: `non-working-allocation-${entry.id}`,
+        date: dateStr,
+        severity: "ERROR",
+        issueType: "PREFERENCE_VIOLATION",
+        employeeId: entry.employeeId,
+        employeeName,
+        message: `${employeeName} has allocations on a ${entry.status.toLowerCase()} day.`,
+        suggestion: "Change the status to working or remove the allocations.",
       });
     }
 
@@ -454,6 +482,30 @@ export async function validateAndSaveRoster(
     for (const allocation of entry.allocations) {
       const brand = brandMap.get(allocation.brandId);
       const process = processMap.get(allocation.processId);
+      const rule = input.rules.find(
+        (item) => item.brandId === allocation.brandId && item.processId === allocation.processId,
+      );
+      const holiday = input.holidays.find((item) => item.date === dateStr);
+      const operating = rule
+        ? isRuleOperating(rule, dateStr, dayOfWeek, holiday)
+        : false;
+      if (!operating) {
+        issues.push({
+          id: `non-operating-${entry.id}-${allocation.brandId}-${allocation.processId}`,
+          date: dateStr,
+          severity: "ERROR",
+          issueType: "PREFERENCE_VIOLATION",
+          brandId: allocation.brandId,
+          brandName: brand?.name,
+          processId: allocation.processId,
+          processName: process?.name,
+          employeeId: entry.employeeId,
+          employeeName,
+          message: `${brand?.name ?? "This brand"} / ${process?.name ?? "this process"} does not operate on ${dateStr}.`,
+          suggestion: "Remove the allocation or update the brand-process operating rule.",
+        });
+      }
+
       const eligible = input.assignments.some(
         (assignment) =>
           assignment.employeeId === entry.employeeId &&
@@ -538,13 +590,15 @@ export async function validateAndSaveRoster(
           })),
         });
       }
-      await tx.roster.update({
-        where: { id: roster.id },
-        data: { status: errors > 0 ? "ISSUES_FOUND" : "DRAFT" },
-      });
+      if (roster.status !== "PUBLISHED") {
+        await tx.roster.update({
+          where: { id: roster.id },
+          data: { status: errors > 0 ? "ISSUES_FOUND" : "DRAFT" },
+        });
+      }
       await tx.auditLog.create({
         data: {
-          action: "ROSTER_REVALIDATED",
+          action: roster.status === "PUBLISHED" ? "PUBLISHED_ROSTER_REVALIDATED" : "ROSTER_REVALIDATED",
           entity: "Roster",
           entityId: roster.id,
           details: `${errors} errors, ${warnings} warnings`,
@@ -601,6 +655,15 @@ export async function updateRosterEntry(
     }
 
     if (operation === "ADD_ALLOCATION") {
+      const config = await loadGenerationInput(month, year);
+      const rule = config.rules.find(
+        (item) => item.brandId === brandId && item.processId === processId,
+      );
+      const holiday = config.holidays.find((item) => item.date === dateStr);
+      if (!rule || !isRuleOperating(rule, dateStr, date.getDay(), holiday)) {
+        throw new Error("Selected brand-process does not operate on the chosen date.");
+      }
+
       const eligible = await prisma.employeeAssignment.findFirst({
         where: {
           employeeId,
@@ -676,20 +739,13 @@ export async function updateRosterEntry(
             where: { id: entry.id },
             data: { status: "WORKING", notes: "Manually updated" },
           });
-          await tx.rosterAllocation.upsert({
-            where: {
-              rosterEntryId_brandId_processId: {
-                rosterEntryId: entry.id,
-                brandId: input.brandId!,
-                processId: input.processId!,
-              },
-            },
-            create: {
+          await tx.rosterAllocation.deleteMany({ where: { rosterEntryId: entry.id } });
+          await tx.rosterAllocation.create({
+            data: {
               rosterEntryId: entry.id,
               brandId: input.brandId!,
               processId: input.processId!,
             },
-            update: {},
           });
         }
       } else {
@@ -697,6 +753,9 @@ export async function updateRosterEntry(
 
         if (operation === "STATUS") {
           const status = (input.status ?? "WORKING") as RosterEntryStatus;
+          if (status === "WORKING" && entry.allocations.length === 0) {
+            throw new Error("Add an allocation before marking this employee as working.");
+          }
           await tx.rosterEntry.update({
             where: { id: entry.id },
             data: {
@@ -1049,22 +1108,32 @@ export async function publishRoster(month: number, year: number): Promise<void> 
   });
 }
 
-export async function revalidateDraftRosters(): Promise<void> {
+export async function revalidateRosters(): Promise<void> {
   const rosters = await prisma.roster.findMany({
-    where: { status: { not: "PUBLISHED" } },
     select: { month: true, year: true },
   });
+  const failures: string[] = [];
 
   for (const roster of rosters) {
-    await validateAndSaveRoster(roster.month, roster.year);
+    try {
+      await validateAndSaveRoster(roster.month, roster.year);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      failures.push(`${roster.month}/${roster.year}: ${message}`);
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(failures.join("; "));
   }
 }
 
-export async function revalidateDraftRostersQuietly(): Promise<void> {
+export async function revalidateRostersQuietly(): Promise<string | null> {
   try {
-    await revalidateDraftRosters();
-  } catch {
-    return;
+    await revalidateRosters();
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Could not revalidate rosters.";
   }
 }
 

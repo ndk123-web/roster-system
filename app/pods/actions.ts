@@ -1,9 +1,14 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { errorState, successState, type ActionState } from "@/lib/mutations/action-state";
+import {
+  errorState,
+  successStateWithRevalidation,
+  type ActionState,
+} from "@/lib/mutations/action-state";
 import { applyUniqueError, isRecordNotFound } from "@/lib/mutations/prisma-errors";
 import { revalidatePaths } from "@/lib/mutations/revalidate";
+import { revalidateRostersQuietly } from "@/modules/roster/db-service";
 import {
   hasErrors,
   readOptionalId,
@@ -109,8 +114,9 @@ export async function createPod(
     return errorState("Could not create pod.");
   }
 
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState(`Pod ${name} created.`);
+  return successStateWithRevalidation(`Pod ${name} created.`, revalidationError);
 }
 
 export async function updatePod(
@@ -176,8 +182,9 @@ export async function updatePod(
     return errorState("Could not update pod.");
   }
 
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState(`Pod ${name} updated.`);
+  return successStateWithRevalidation(`Pod ${name} updated.`, revalidationError);
 }
 
 export async function deletePod(
@@ -197,8 +204,12 @@ export async function deletePod(
       prisma.employee.updateMany({ where: { podId: id }, data: { podId: null } }),
       prisma.pod.delete({ where: { id } }),
     ]);
+    const revalidationError = await revalidateRostersQuietly();
     revalidatePaths(PATHS);
-    return successState(`Pod ${pod.name} deleted. Members are now unassigned.`);
+    return successStateWithRevalidation(
+      `Pod ${pod.name} deleted. Members are now unassigned.`,
+      revalidationError,
+    );
   } catch (error) {
     if (isRecordNotFound(error)) return errorState("Pod not found.");
     return errorState("Could not delete pod.");

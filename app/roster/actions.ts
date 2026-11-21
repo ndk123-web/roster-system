@@ -14,7 +14,7 @@ import {
 import {
   generateAndSaveRoster,
   publishRoster,
-  revalidateDraftRosters,
+  revalidateRosters as revalidatePersistedRosters,
   rosterPaths,
   updateRosterEntry,
 } from "@/modules/roster/db-service";
@@ -125,9 +125,9 @@ export async function revalidateRosters(
   void _state;
   void _formData;
   try {
-    await revalidateDraftRosters();
+    await revalidatePersistedRosters();
     revalidatePaths(rosterPaths());
-    return successState("Draft rosters revalidated against current configuration.");
+    return successState("All rosters revalidated. Published schedules were left unchanged.");
   } catch (error) {
     return errorState(error instanceof Error ? error.message : "Could not revalidate rosters.");
   }

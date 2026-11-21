@@ -241,12 +241,17 @@ export function RosterWorkbench({
                 variant="outline"
                 size="sm"
                 onClick={() => setDialog("revalidate")}
-                disabled={!view.meta || published}
+                disabled={!view.meta}
               >
                 <RefreshCwIcon className="w-3.5 h-3.5 mr-1" />
                 Revalidate
               </Button>
-              <Button variant="primary" size="sm" onClick={() => setDialog("generate")}>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setDialog("generate")}
+                disabled={published}
+              >
                 {view.meta ? "Regenerate" : "Generate Roster"}
               </Button>
               <Button
@@ -687,8 +692,8 @@ export function RosterWorkbench({
       <ConfirmDialog
         open={dialog === "revalidate"}
         onClose={() => setDialog(null)}
-        title="Revalidate draft rosters?"
-        description="Draft rosters are validated against the current employees, assignments, rules, holidays, and availability while preserving manual edits."
+        title="Revalidate all rosters?"
+        description="All rosters are validated against current configuration while preserving manual edits. Published schedules are not modified."
         confirmLabel="Revalidate"
         action={revalidateRosters}
         id=""

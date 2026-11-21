@@ -1,10 +1,14 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { errorState, successState, type ActionState } from "@/lib/mutations/action-state";
+import {
+  errorState,
+  successStateWithRevalidation,
+  type ActionState,
+} from "@/lib/mutations/action-state";
 import { applyUniqueError, isRecordNotFound } from "@/lib/mutations/prisma-errors";
 import { revalidatePaths } from "@/lib/mutations/revalidate";
-import { revalidateDraftRostersQuietly } from "@/modules/roster/db-service";
+import { revalidateRostersQuietly } from "@/modules/roster/db-service";
 import {
   hasErrors,
   readBoolean,
@@ -53,9 +57,9 @@ export async function createProcess(
     return errorState("Could not create process.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState(`Process ${code} created.`);
+  return successStateWithRevalidation(`Process ${code} created.`, revalidationError);
 }
 
 export async function updateProcess(
@@ -95,9 +99,9 @@ export async function updateProcess(
     return errorState("Could not update process.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState(`Process ${code} updated.`);
+  return successStateWithRevalidation(`Process ${code} updated.`, revalidationError);
 }
 
 export async function deactivateProcess(
@@ -114,7 +118,7 @@ export async function deactivateProcess(
     return errorState("Could not deactivate process.");
   }
 
-  await revalidateDraftRostersQuietly();
+  const revalidationError = await revalidateRostersQuietly();
   revalidatePaths(PATHS);
-  return successState("Process deactivated.");
+  return successStateWithRevalidation("Process deactivated.", revalidationError);
 }

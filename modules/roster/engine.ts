@@ -239,7 +239,7 @@ function getRequiredStaffing(
   return Math.max(0, rule.defaultMinStaffing);
 }
 
-function isRuleOperating(
+export function isRuleOperating(
   rule: EngineRule,
   dateStr: string,
   dayOfWeek: number,
@@ -507,6 +507,21 @@ export function generateMonthlyRoster(input: GenerationInput): GenerationResult 
       const approvedCompOff = isApprovedCompOff(employee.id, dateStr, input.compOffs);
       const weeklyOff = isEmployeeWeeklyOff(employee, dateStr, dayOfWeek);
       const allocations = dayAllocations.get(employee.id) ?? [];
+      const holidayApplies =
+        holiday &&
+        (holiday.affectsAllProcesses ||
+          input.assignments.some(
+            (assignment) =>
+              assignment.employeeId === employee.id &&
+              assignment.active &&
+              inRange(dateStr, assignment.effectiveFrom, assignment.effectiveTo) &&
+              input.rules.some(
+                (rule) =>
+                  rule.brandId === assignment.brandId &&
+                  rule.processId === assignment.processId &&
+                  !rule.operatesOnHolidays,
+              ),
+          ));
 
       let status: RosterEntryStatus = "UNASSIGNED";
       let detail = "Available / Unassigned";
@@ -528,7 +543,7 @@ export function generateMonthlyRoster(input: GenerationInput): GenerationResult 
       } else if (weeklyOff) {
         status = "WEEKLY_OFF";
         detail = "Scheduled Weekly Off";
-      } else if (holiday) {
+      } else if (holidayApplies) {
         status = "PUBLIC_HOLIDAY";
         detail = holiday.name;
       }

@@ -41,6 +41,13 @@ The MVP was completed in stages:
    - Replaced the boilerplate README with project documentation.
    - Ran lint, typecheck, production build, browser smoke tests, and a final database reset.
 
+6. Validation hardening
+   - Added hard write-time checks for single allocation per employee/date, operating brand-process days, eligible assignments, active employees, and valid working status.
+   - Added validation issues for non-operating allocations, working entries without allocations, and allocations on non-working days.
+   - Extended revalidation to published rosters without changing published schedules or status.
+   - Surfaced revalidation failures in master-data and availability action messages.
+   - Applied the public-holiday scope flag to employee public-holiday labelling while keeping brand-process holiday coverage authoritative.
+
 ## Features
 
 - Master-data management for employees, pods, brands, processes, assignments, weekly offs, and public holidays.
@@ -51,7 +58,7 @@ The MVP was completed in stages:
 - Five roster views: company, pod, brand, process, and employee.
 - Coverage issues page with severity filters and manager actions.
 - Publication gate that blocks rosters with mandatory errors.
-- Draft revalidation after master-data or availability changes while preserving manual edits.
+- Revalidation of all rosters after master-data or availability changes while preserving manual edits.
 - Protected health and seed API.
 - Seed data with realistic multi-brand, multi-process scheduling scenarios.
 
@@ -98,7 +105,7 @@ Employee deactivation and brand/process deactivation are soft deactivations. Pod
 
 A brand is treated as single-resource when the loaded configuration has one or fewer assigned employees. When the only employee for a brand is unavailable, the engine cannot cover that requirement and records a coverage gap. Multi-resource brands can satisfy multiple process requirements when enough distinct eligible employees exist. One employee can receive at most one allocation per date.
 
-Conflicting requirements and insufficient staffing are recorded as `ERROR` issues that block publication. Soft preference violations, such as pending leave, are recorded as `WARNING` issues. Manual edits are allowed on drafts, but they are revalidated and can introduce new issues.
+Conflicting requirements, insufficient staffing, non-operating allocations, inactive employees, and structurally invalid working entries are recorded as `ERROR` issues that block publication. Soft preference violations, such as pending leave, are recorded as `WARNING` issues. Manual edits enforce the same hard constraints at write time: one allocation per employee per date, operating brand-process day, active assignment coverage, and no working status without an allocation. Drafts and published rosters are revalidated without rewriting persisted schedules.
 
 ## Automated and human-controlled steps
 
@@ -109,7 +116,7 @@ Automated:
 - Availability checks.
 - Deterministic allocation.
 - Coverage and conflict validation.
-- Draft revalidation after relevant data changes.
+- Draft and published-roster revalidation after relevant data changes.
 
 Human-controlled:
 
@@ -120,7 +127,7 @@ Human-controlled:
 - Publishing a valid roster.
 - Database reset and deployment.
 
-Published rosters are locked: they cannot be regenerated or manually edited. Configuration changes do not silently rewrite published history.
+Published rosters are locked: they cannot be regenerated or manually edited. They can still be revalidated so new issues become visible, but configuration changes never rewrite published schedules or status. Revalidation failures from master-data and availability actions are surfaced in the action message instead of being silently ignored.
 
 ## Local setup
 
@@ -205,7 +212,7 @@ Backup and recovery: use Neon's point-in-time recovery and branch/backup feature
 - One schedulable work allocation per employee per date; no start/end shift times.
 - Weekly offs are employee-specific and may be effective-dated.
 - Pending leave is a warning; approved leave blocks scheduling.
-- Holiday applicability is configured per brand-process rule.
+- Holiday coverage is configured per brand-process rule; the holiday scope flag controls whether the public-holiday label applies globally or only to employees assigned to rules closed on holidays.
 - Each employee has one primary pod.
 - Pod-lead scoped permissions and manager authentication are not implemented.
 - The schema has no migration history; setup uses `prisma db push`.

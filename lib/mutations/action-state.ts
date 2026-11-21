@@ -20,3 +20,12 @@ export function errorState(
 ): ActionState {
   return { status: "error", message, fieldErrors };
 }
+
+export function successStateWithRevalidation(
+  message: string,
+  revalidationError: string | null,
+): ActionState {
+  return successState(
+    revalidationError ? `${message} Roster revalidation warning: ${revalidationError}` : message,
+  );
+}
