@@ -35,9 +35,15 @@ interface StatusChange {
 }
 
 function statusVariant(status: string) {
-  if (status === "APPROVED") return "warning" as const;
-  if (status === "PENDING") return "outline" as const;
+  if (status === "APPROVED") return "success" as const;
+  if (status === "PENDING") return "warning" as const;
   return "secondary" as const;
+}
+
+function statusLabel(status: string) {
+  if (status === "APPROVED") return "Approved";
+  if (status === "PENDING") return "Pending";
+  return "Rejected";
 }
 
 export function CompOffManager({
@@ -140,7 +146,9 @@ export function CompOffManager({
                   </td>
                   <td className="px-4 py-3 text-neutral-600 italic">{compOff.reason ?? "—"}</td>
                   <td className="px-4 py-3">
-                    <Badge variant={statusVariant(compOff.status)}>{compOff.status}</Badge>
+                    <Badge variant={statusVariant(compOff.status)}>
+                      {statusLabel(compOff.status)}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center justify-end gap-1.5">

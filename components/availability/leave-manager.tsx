@@ -37,14 +37,14 @@ interface StatusChange {
 }
 
 function statusVariant(status: string) {
-  if (status === "APPROVED") return "error" as const;
+  if (status === "APPROVED") return "success" as const;
   if (status === "PENDING") return "warning" as const;
   return "secondary" as const;
 }
 
 function statusLabel(status: string) {
-  if (status === "APPROVED") return "Approved (Unavailable)";
-  if (status === "PENDING") return "Pending Review";
+  if (status === "APPROVED") return "Approved";
+  if (status === "PENDING") return "Pending";
   return "Rejected";
 }
 

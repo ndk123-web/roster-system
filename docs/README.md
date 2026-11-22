@@ -17,6 +17,7 @@ The MVP was completed in stages:
    - Converted the availability page to database-backed server rendering.
    - Added leave and comp-off CRUD with approval/reject status transitions.
    - Validated date ranges, active employees, overlaps, duplicate comp-offs, and required fields.
+   - Standardized leave and comp-off status badges to `Approved`, `Pending`, and `Rejected` with green, amber, and neutral colours.
    - Smoke-tested leave and comp-off create, edit, status change, approve, reject, and delete flows.
 
 3. Roster generation core
@@ -187,7 +188,7 @@ Completed verification:
 - `npm run lint` passed.
 - `npx tsc --noEmit` passed.
 - `npm run build` passed with 15/15 static pages generated.
-- Browser smoke tests covered master-data CRUD, availability CRUD, roster generation, roster views, issue persistence, manual edits, allocation removal, post-change revalidation, single-allocation reassignment, working-status-without-allocation rejection, and non-operating-day allocation rejection.
+- Browser smoke tests covered master-data CRUD, availability CRUD, availability status badge consistency, roster generation, roster views, issue persistence, manual edits, allocation removal, post-change revalidation, single-allocation reassignment, working-status-without-allocation rejection, and non-operating-day allocation rejection.
 - Browser console checks showed no runtime errors after final reload.
 - Database was reset with `npm run db:seed` after testing.
 
