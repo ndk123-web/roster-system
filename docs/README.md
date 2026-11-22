@@ -216,6 +216,7 @@ Completed verification:
 - Browser smoke tests covered master-data CRUD, availability CRUD, availability status badge consistency, roster generation, roster views, issue persistence, manual edits, allocation removal, post-change revalidation, single-allocation reassignment, working-status-without-allocation rejection, and non-operating-day allocation rejection.
 - Browser navigation checks confirmed partial prerendering on every dynamic page, a persistent sidebar, loading skeletons on route transitions, and a single shared coverage-count request.
 - Browser console checks showed no runtime errors after final reload.
+- Browser availability status-change checks confirmed that approving Anita Roy's 2026-11-02 leave changes the roster entry to `LEAVE`, rejecting it restores `WORKING` with zero issues, and dashboard, sidebar, issues page, and count API all report the same single coverage gap.
 - Final database reset produced the clean 30-employee, 5-brand dataset with a zero-issue roster and no sidebar coverage badge.
 
 ## Deployment
