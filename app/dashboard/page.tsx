@@ -4,7 +4,7 @@ import { UrgentConflictsPanel } from "@/components/dashboard/urgent-conflicts-pa
 import { CoverageHealth } from "@/components/dashboard/coverage-health";
 import { DistributionSummary } from "@/components/dashboard/distribution-summary";
 import { QuickActions } from "@/components/dashboard/quick-actions";
-import { getDashboardStats } from "@/lib/queries";
+import { getCurrentRosterIssues, getDashboardStats } from "@/lib/queries";
 
 export const metadata = {
   title: "Operations Dashboard | Smart Roster Management",
@@ -12,7 +12,7 @@ export const metadata = {
 };
 
 export default async function DashboardPage() {
-  const stats = await getDashboardStats();
+  const [stats, issues] = await Promise.all([getDashboardStats(), getCurrentRosterIssues()]);
 
   return (
     <div className="flex flex-col min-h-full">
@@ -37,7 +37,7 @@ export default async function DashboardPage() {
         <QuickActions />
 
         {/* Real-time Constraint Telemetry & Conflict Flagging */}
-        <UrgentConflictsPanel />
+        <UrgentConflictsPanel issues={issues} />
 
         {/* Operational Pod Health & Staffing Distribution */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

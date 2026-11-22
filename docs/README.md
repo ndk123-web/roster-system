@@ -61,6 +61,13 @@ The MVP was completed in stages:
    - Consolidated the coverage-count fetch into one provider shared by the sidebar and header.
    - Removed blocking instant-navigation opt-outs so dynamic routes can prefetch their shell and show skeletons immediately.
 
+9. Availability-driven roster sync and live telemetry
+   - Approved leave and comp-off records recompute affected draft roster dates from the engine, so statuses show `LEAVE` or `COMP_OFF` and allocations reflect the next eligible resource.
+   - Rejected or deleted availability records restore the baseline for affected draft dates.
+   - Published rosters remain frozen and are only revalidated so new conflict issues become visible.
+   - Replaced the dashboard's mock conflict list with persisted current-month issues.
+   - Added `Effective From` and `Effective To` form hints and clarified that a pod lead does not block roster allocation.
+
 ## Features
 
 - Master-data management for employees, pods, brands, processes, assignments, weekly offs, and public holidays.
@@ -73,7 +80,9 @@ The MVP was completed in stages:
 - Sidebar coverage badge and roster header status driven by the current-month persisted issue count.
 - Route-level skeleton loading states with a persistent sidebar and shared coverage-count fetch.
 - Publication gate that blocks rosters with mandatory errors.
-- Revalidation of all rosters after master-data or availability changes while preserving manual edits.
+- Revalidation after master-data changes while preserving manual edits.
+- Availability changes recompute affected draft dates and restore the baseline on reject/delete; published schedules stay frozen.
+- Dashboard conflict telemetry driven by persisted current-month issues.
 - Protected health and seed API.
 - Seed data with realistic multi-brand, multi-process scheduling scenarios.
 
@@ -142,7 +151,7 @@ Human-controlled:
 - Publishing a valid roster.
 - Database reset and deployment.
 
-Published rosters are locked: they cannot be regenerated or manually edited. They can still be revalidated so new issues become visible, but configuration changes never rewrite published schedules or status. Revalidation failures from master-data and availability actions are surfaced in the action message instead of being silently ignored.
+Published rosters are locked: they cannot be regenerated or manually edited. They can still be revalidated so new issues become visible, but configuration and availability changes never rewrite published schedules or status. Draft rosters affected by leave or comp-off changes are recomputed from the engine for those dates; rejecting or deleting availability restores the baseline for those dates. Revalidation failures from master-data and availability actions are surfaced in the action message instead of being silently ignored.
 
 ## Local setup
 

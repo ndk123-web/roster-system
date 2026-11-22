@@ -82,7 +82,13 @@ export function PodsManager({
   const fields: EntityField[] = [
     { name: "name", label: "Pod Name", type: "text", required: true },
     { name: "description", label: "Description", type: "textarea" },
-    { name: "leadId", label: "Pod Lead", type: "select", options: leadOptions },
+    {
+      name: "leadId",
+      label: "Pod Lead",
+      type: "select",
+      options: leadOptions,
+      hint: "Leads the pod; this does not block roster allocation.",
+    },
     {
       name: "memberIds",
       label: "Members",
