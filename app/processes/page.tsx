@@ -7,8 +7,6 @@ export const metadata = {
   title: "Operational Processes | Smart Roster Management",
 };
 
-export const instant = false;
-
 export default async function ProcessesPage() {
   const processes = await getProcesses();
 

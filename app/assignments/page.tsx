@@ -12,8 +12,6 @@ export const metadata = {
   title: "Resource Assignments | Smart Roster Management",
 };
 
-export const instant = false;
-
 export default async function AssignmentsPage() {
   const [assignments, employees, brands, processes] = await Promise.all([
     getAssignments(),

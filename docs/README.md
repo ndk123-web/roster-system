@@ -49,6 +49,18 @@ The MVP was completed in stages:
    - Surfaced revalidation failures in master-data and availability action messages.
    - Applied the public-holiday scope flag to employee public-holiday labelling while keeping brand-process holiday coverage authoritative.
 
+7. Clean reset dataset
+   - Replaced the conflict-heavy demo seed with 30 employees, 3 pods, 5 brands, 3 processes, 15 brand-process rules, and 30 assignments.
+   - Pre-generated the current-month roster with 900 entries, 450 allocations, and zero validation issues.
+   - Retained two public holidays with every brand-process rule operating on holidays; no leave or comp-off records are seeded.
+   - Made the sidebar coverage badge and roster header status read the current-month issue count, hiding zero-value badges.
+
+8. Navigation loading states
+   - Added route-level skeletons for master data, availability, holidays, issues, roster, and dashboard pages.
+   - Kept the sidebar mounted during route transitions with a shared loading shell.
+   - Consolidated the coverage-count fetch into one provider shared by the sidebar and header.
+   - Removed blocking instant-navigation opt-outs so dynamic routes can prefetch their shell and show skeletons immediately.
+
 ## Features
 
 - Master-data management for employees, pods, brands, processes, assignments, weekly offs, and public holidays.
@@ -58,6 +70,8 @@ The MVP was completed in stages:
 - Draft persistence with manual roster entry edits.
 - Five roster views: company, pod, brand, process, and employee.
 - Coverage issues page with severity filters and manager actions.
+- Sidebar coverage badge and roster header status driven by the current-month persisted issue count.
+- Route-level skeleton loading states with a persistent sidebar and shared coverage-count fetch.
 - Publication gate that blocks rosters with mandatory errors.
 - Revalidation of all rosters after master-data or availability changes while preserving manual edits.
 - Protected health and seed API.
@@ -147,13 +161,15 @@ cp .env.example .env
 
 Set `DATABASE_URL` in `.env` to your PostgreSQL connection string. Set `SEED_API_TOKEN` to a long random value if you want to use the protected seed API endpoint.
 
-Apply the schema and seed sample data:
+Apply the schema and seed the clean dataset:
 
 ```bash
 npx prisma generate
 npx prisma db push
 npm run db:seed
 ```
+
+The seed is destructive: it clears all operational rows, then inserts 30 employees, 3 pods, 5 brands, 3 processes, 30 assignments, 2 public holidays, and a clean current-month roster with zero issues.
 
 Start the app:
 
@@ -187,10 +203,10 @@ Completed verification:
 
 - `npm run lint` passed.
 - `npx tsc --noEmit` passed.
-- `npm run build` passed with 15/15 static pages generated.
+- `npm run build` passed with 16/16 static pages generated.
 - Browser smoke tests covered master-data CRUD, availability CRUD, availability status badge consistency, roster generation, roster views, issue persistence, manual edits, allocation removal, post-change revalidation, single-allocation reassignment, working-status-without-allocation rejection, and non-operating-day allocation rejection.
 - Browser console checks showed no runtime errors after final reload.
-- Database was reset with `npm run db:seed` after testing.
+- Final database reset produced the clean 30-employee, 5-brand dataset with a zero-issue roster and no sidebar coverage badge.
 
 ## Deployment
 
@@ -200,7 +216,7 @@ For deployment:
 
 1. Create a Neon database.
 2. Set `DATABASE_URL` and `SEED_API_TOKEN` as Vercel environment variables.
-3. Run `npx prisma db push` and `npm run db:seed` against the production database.
+3. Run `npx prisma db push` and `npm run db:seed` against the production database to load the clean dataset.
 4. Deploy the repository to Vercel.
 5. Confirm `/api/seed` reports a database connection.
 

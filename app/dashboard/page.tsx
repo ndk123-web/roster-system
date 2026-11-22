@@ -11,8 +11,6 @@ export const metadata = {
   description: "Workforce allocation, brand coverage, and conflict telemetry for D2C operations.",
 };
 
-export const instant = false
-
 export default async function DashboardPage() {
   const stats = await getDashboardStats();
 

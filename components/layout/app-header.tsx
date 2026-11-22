@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RefreshCwIcon, CalendarIcon } from "@/components/ui/icons";
+import { useIssueCount } from "@/components/layout/issue-count-provider";
 
 interface AppHeaderProps {
   title?: string;
@@ -13,6 +15,18 @@ export function AppHeader({
   title = "Operations Dashboard",
   subtitle = "Workforce allocation, brand coverage, and conflict telemetry",
 }: AppHeaderProps) {
+  const { count: issueCount } = useIssueCount();
+  const [monthLabel, setMonthLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMonthLabel(
+      new Date().toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      }),
+    );
+  }, []);
+
   return (
     <header className="h-14 border-b border-neutral-200 bg-white px-6 flex items-center justify-between sticky top-0 z-10">
       <div className="flex items-center gap-4 min-w-0">
@@ -30,10 +44,17 @@ export function AppHeader({
         {/* Active Roster Month & Status */}
         <div className="flex items-center gap-2 border border-neutral-200 rounded-md px-2.5 py-1 bg-neutral-50 text-xs">
           <CalendarIcon className="w-3.5 h-3.5 text-neutral-500" />
-          <span className="font-medium text-neutral-800">November 2026</span>
-          <Badge variant="warning" className="ml-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-            Draft (3 Issues)
+          <span className="font-medium text-neutral-800">{monthLabel ?? "Current month"}</span>
+          <Badge
+            variant={issueCount !== null && issueCount > 0 ? "warning" : "success"}
+            className="ml-1"
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                issueCount !== null && issueCount > 0 ? "bg-amber-500" : "bg-emerald-500"
+              }`}
+            />
+            Draft{issueCount !== null && issueCount > 0 ? ` (${issueCount} Issues)` : ""}
           </Badge>
         </div>
 

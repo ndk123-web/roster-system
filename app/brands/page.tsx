@@ -7,8 +7,6 @@ export const metadata = {
   title: "Client Brands | Smart Roster Management",
 };
 
-export const instant = false;
-
 export default async function BrandsPage() {
   const [brands, processes] = await Promise.all([getBrandsWithRules(), getProcesses()]);
 

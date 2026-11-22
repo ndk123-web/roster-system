@@ -119,6 +119,18 @@ export interface HolidayRow {
   affectsAllProcesses: boolean;
 }
 
+export async function getCurrentIssueCount(): Promise<number> {
+  const now = new Date();
+  return prisma.validationIssue.count({
+    where: {
+      roster: {
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+      },
+    },
+  });
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export async function getDashboardStats(): Promise<DashboardStats> {
