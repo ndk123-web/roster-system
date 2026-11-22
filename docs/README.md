@@ -4,6 +4,8 @@ This is the project README for Smart Roster. Run all commands from the repositor
 
 Smart Roster is a Next.js operations tool for building, validating, reviewing, and publishing a monthly staffing roster. It models employees, pods, brands, processes, brand-process operating rules, assignments, weekly offs, holidays, leave, and comp-offs in PostgreSQL through Prisma.
 
+Read [How Smart Roster works](SYSTEM.md) for the detailed implementation reference, lifecycle, edge-case catalog, and source index.
+
 ## Implementation summary
 
 The MVP was completed in stages:

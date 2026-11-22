@@ -2,6 +2,8 @@
 
 Project documentation lives in [`docs/README.md`](docs/README.md).
 
+Read [How Smart Roster works](docs/SYSTEM.md) for the detailed implementation reference, lifecycle, edge-case catalog, and source index.
+
 It includes setup instructions, architecture, scheduling logic, implementation summary, verification results, deployment notes, assumptions, limitations, and assessment answers.
 
 Quick start:
