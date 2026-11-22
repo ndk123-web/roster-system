@@ -2,14 +2,27 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log("Seeding database with DataStraw Assessment dataset...");
+const now = new Date();
+const year = now.getUTCFullYear();
+const month = now.getUTCMonth() + 1;
+const monthStart = new Date(Date.UTC(year, month - 1, 1));
+const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
 
-  // 1. Clean existing records (in reverse dependency order)
+const dateForDay = (day) => new Date(Date.UTC(year, month - 1, day));
+const dateKey = (day) =>
+  `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+const emailFor = (name) =>
+  `${name.toLowerCase().replace(/[^a-z]+/g, ".").replace(/^\.|\.$/g, "")}@datastraw.ops`;
+
+async function main() {
+  console.log("Seeding clean Smart Roster dataset...");
+
   await prisma.validationIssue.deleteMany({});
   await prisma.rosterAllocation.deleteMany({});
   await prisma.rosterEntry.deleteMany({});
   await prisma.roster.deleteMany({});
+  await prisma.auditLog.deleteMany({});
   await prisma.leave.deleteMany({});
   await prisma.compOff.deleteMany({});
   await prisma.employeeWeeklyOff.deleteMany({});
@@ -19,261 +32,258 @@ async function main() {
   await prisma.publicHoliday.deleteMany({});
   await prisma.brand.deleteMany({});
   await prisma.process.deleteMany({});
-  
-  // Unlink leads before deleting pods/employees
   await prisma.pod.updateMany({ data: { leadId: null } });
   await prisma.employee.deleteMany({});
   await prisma.pod.deleteMany({});
 
   console.log("Cleared existing data.");
 
-  // 2. Insert Processes
   const processes = [
-    { id: "proc-cs", code: "CS", name: "Customer Support", description: "Inbound client inquiries, ticketing, live chat, and complaint resolution." },
-    { id: "proc-acc", code: "ACC", name: "Abandoned Cart Conversions", description: "Proactive checkout recovery, customer outreach, and discount assistance." },
-    { id: "proc-ndr", code: "NDR", name: "Non-Delivery Reports", description: "Courier tracking, RTO reduction, address verification, and delivery coordination." },
-    { id: "proc-ret", code: "RET", name: "Customer Retention", description: "VIP retention, repeat purchase campaigns, and satisfaction follow-ups." },
+    {
+      id: "proc-cs",
+      code: "CS",
+      name: "Customer Support",
+      description: "Inbound client inquiries, ticketing, live chat, and complaint resolution.",
+    },
+    {
+      id: "proc-acc",
+      code: "ACC",
+      name: "Abandoned Cart Conversions",
+      description: "Proactive checkout recovery, customer outreach, and discount assistance.",
+    },
+    {
+      id: "proc-ndr",
+      code: "NDR",
+      name: "Non-Delivery Reports",
+      description: "Courier tracking, RTO reduction, address verification, and delivery coordination.",
+    },
   ];
-  for (const proc of processes) {
-    await prisma.process.create({ data: proc });
-  }
-  console.log(`Created ${processes.length} core processes.`);
 
-  // 3. Insert Pods (initial without leadId)
+  await prisma.process.createMany({ data: processes });
+
   const pods = [
-    { id: "pod-1", name: "Pod North (Flagship D2C)", description: "Handles Tier-1 cosmetics and lifestyle D2C client brands." },
-    { id: "pod-2", name: "Pod South (Retention & NDR)", description: "Specialized logistics coordination, RTO management, and customer recovery." },
-    { id: "pod-3", name: "Pod East (High-Volume Support)", description: "High-ticket consumer electronics, accessories, and 24/7 client care." },
-    { id: "pod-4", name: "Pod West (Specialized Brands)", description: "Health, nutrition, apparel, and emerging direct-to-consumer accounts." },
-  ];
-  for (const pod of pods) {
-    await prisma.pod.create({ data: pod });
-  }
-
-  // 4. Insert 32 Employees
-  const employees = [
-    // POD 1 (emp-001 to emp-008)
-    { id: "emp-001", code: "EMP001", name: "Anita Roy", email: "anita.roy@datastraw.ops", podId: "pod-1", weeklyOff: 0 },
-    { id: "emp-002", code: "EMP002", name: "Priya Sharma", email: "priya.sharma@datastraw.ops", podId: "pod-1", weeklyOff: 0 },
-    { id: "emp-003", code: "EMP003", name: "Rohan Patel", email: "rohan.patel@datastraw.ops", podId: "pod-1", weeklyOff: 1 },
-    { id: "emp-004", code: "EMP004", name: "Kavita Nair", email: "kavita.nair@datastraw.ops", podId: "pod-1", weeklyOff: 2 },
-    { id: "emp-005", code: "EMP005", name: "Arjun Mehta", email: "arjun.mehta@datastraw.ops", podId: "pod-1", weeklyOff: 3 },
-    { id: "emp-006", code: "EMP006", name: "Pooja Hegde", email: "pooja.hegde@datastraw.ops", podId: "pod-1", weeklyOff: 4 },
-    { id: "emp-007", code: "EMP007", name: "Aman Gupta", email: "aman.gupta@datastraw.ops", podId: "pod-1", weeklyOff: 5 },
-    { id: "emp-008", code: "EMP008", name: "Divya Deshmukh", email: "divya.deshmukh@datastraw.ops", podId: "pod-1", weeklyOff: 6 },
-
-    // POD 2 (emp-009 to emp-016)
-    { id: "emp-009", code: "EMP009", name: "Vikram Seth", email: "vikram.seth@datastraw.ops", podId: "pod-2", weeklyOff: 0 },
-    { id: "emp-010", code: "EMP010", name: "Rajesh Kumar", email: "rajesh.kumar@datastraw.ops", podId: "pod-2", weeklyOff: 0 },
-    { id: "emp-011", code: "EMP011", name: "Meera Joshi", email: "meera.joshi@datastraw.ops", podId: "pod-2", weeklyOff: 1 },
-    { id: "emp-012", code: "EMP012", name: "Siddharth Rao", email: "siddharth.rao@datastraw.ops", podId: "pod-2", weeklyOff: 2 },
-    { id: "emp-013", code: "EMP013", name: "Ananya Iyer", email: "ananya.iyer@datastraw.ops", podId: "pod-2", weeklyOff: 3 },
-    { id: "emp-014", code: "EMP014", name: "Kunal Singhania", email: "kunal.singhania@datastraw.ops", podId: "pod-2", weeklyOff: 4 },
-    { id: "emp-015", code: "EMP015", name: "Shalini Pandey", email: "shalini.pandey@datastraw.ops", podId: "pod-2", weeklyOff: 5 },
-    { id: "emp-016", code: "EMP016", name: "Aditya Bhat", email: "aditya.bhat@datastraw.ops", podId: "pod-2", weeklyOff: 6 },
-
-    // POD 3 (emp-017 to emp-024)
-    { id: "emp-017", code: "EMP017", name: "Sneha Menon", email: "sneha.menon@datastraw.ops", podId: "pod-3", weeklyOff: 0 },
-    { id: "emp-018", code: "EMP018", name: "Varun Chopra", email: "varun.chopra@datastraw.ops", podId: "pod-3", weeklyOff: 1 },
-    { id: "emp-019", code: "EMP019", name: "Tanvi Saxena", email: "tanvi.saxena@datastraw.ops", podId: "pod-3", weeklyOff: 2 },
-    { id: "emp-020", code: "EMP020", name: "Gaurav Sen", email: "gaurav.sen@datastraw.ops", podId: "pod-3", weeklyOff: 3 },
-    { id: "emp-021", code: "EMP021", name: "Isha Kapoor", email: "isha.kapoor@datastraw.ops", podId: "pod-3", weeklyOff: 4 },
-    { id: "emp-022", code: "EMP022", name: "Nikhil Chawla", email: "nikhil.chawla@datastraw.ops", podId: "pod-3", weeklyOff: 5 },
-    { id: "emp-023", code: "EMP023", name: "Kritika Das", email: "kritika.das@datastraw.ops", podId: "pod-3", weeklyOff: 6 },
-    { id: "emp-024", code: "EMP024", name: "Harsh Vardhan", email: "harsh.vardhan@datastraw.ops", podId: "pod-3", weeklyOff: 0 },
-
-    // POD 4 (emp-025 to emp-032)
-    { id: "emp-025", code: "EMP025", name: "Amit Verma", email: "amit.verma@datastraw.ops", podId: "pod-4", weeklyOff: 0 },
-    { id: "emp-026", code: "EMP026", name: "Ritu Nambiar", email: "ritu.nambiar@datastraw.ops", podId: "pod-4", weeklyOff: 1 },
-    { id: "emp-027", code: "EMP027", name: "Deepak Pillai", email: "deepak.pillai@datastraw.ops", podId: "pod-4", weeklyOff: 2 },
-    { id: "emp-028", code: "EMP028", name: "Simran Gill", email: "simran.gill@datastraw.ops", podId: "pod-4", weeklyOff: 3 },
-    { id: "emp-029", code: "EMP029", name: "Manish Tiwari", email: "manish.tiwari@datastraw.ops", podId: "pod-4", weeklyOff: 4 },
-    { id: "emp-030", code: "EMP030", name: "Swati Reddy", email: "swati.reddy@datastraw.ops", podId: "pod-4", weeklyOff: 5 },
-    { id: "emp-031", code: "EMP031", name: "Karan Malhotra", email: "karan.malhotra@datastraw.ops", podId: "pod-4", weeklyOff: 6 },
-    { id: "emp-032", code: "EMP032", name: "Neha Roy", email: "neha.roy@datastraw.ops", podId: "pod-4", weeklyOff: 0 },
+    { id: "pod-1", name: "Pod North", description: "GlowAura, UrbanPulse, and Kavita Organics coverage." },
+    { id: "pod-2", name: "Pod Central", description: "PureNourish, EcoVibe Home, and GlowAura support coverage." },
+    { id: "pod-3", name: "Pod South", description: "UrbanPulse, Kavita Organics, and PureNourish coverage." },
   ];
 
-  for (const emp of employees) {
-    await prisma.employee.create({
-      data: {
-        id: emp.id,
-        code: emp.code,
-        name: emp.name,
-        email: emp.email,
-        podId: emp.podId,
-        active: true,
-      },
-    });
+  await prisma.pod.createMany({ data: pods });
 
-    // Create weekly off
-    await prisma.employeeWeeklyOff.create({
-      data: {
-        employeeId: emp.id,
-        dayOfWeek: emp.weeklyOff,
-      },
-    });
-  }
-  console.log(`Created ${employees.length} employees with weekly off schedules.`);
+  const employeeNames = [
+    "Anita Roy",
+    "Priya Sharma",
+    "Rohan Patel",
+    "Kavita Nair",
+    "Arjun Mehta",
+    "Pooja Hegde",
+    "Aman Gupta",
+    "Divya Deshmukh",
+    "Vikram Seth",
+    "Rajesh Kumar",
+    "Meera Joshi",
+    "Siddharth Rao",
+    "Ananya Iyer",
+    "Kunal Singhania",
+    "Shalini Pandey",
+    "Aditya Bhat",
+    "Sneha Menon",
+    "Varun Chopra",
+    "Tanvi Saxena",
+    "Gaurav Sen",
+    "Isha Kapoor",
+    "Nikhil Chawla",
+    "Kritika Das",
+    "Harsh Vardhan",
+    "Amit Verma",
+    "Ritu Nambiar",
+    "Deepak Pillai",
+    "Simran Gill",
+    "Manish Tiwari",
+    "Swati Reddy",
+  ];
 
-  // Update Pod Leads
+  const employees = employeeNames.map((name, index) => ({
+    id: `emp-${String(index + 1).padStart(3, "0")}`,
+    code: `EMP${String(index + 1).padStart(3, "0")}`,
+    name,
+    email: emailFor(name),
+    podId: `pod-${Math.floor(index / 10) + 1}`,
+    active: true,
+  }));
+
+  const weeklyOffs = employees.map((employee, index) => ({
+    employeeId: employee.id,
+    dayOfWeek: index % 2 === 0 ? 0 : 1,
+    effectiveFrom: monthStart,
+    effectiveTo: null,
+  }));
+
+  await prisma.employee.createMany({ data: employees });
+  await prisma.employeeWeeklyOff.createMany({ data: weeklyOffs });
   await prisma.pod.update({ where: { id: "pod-1" }, data: { leadId: "emp-001" } });
-  await prisma.pod.update({ where: { id: "pod-2" }, data: { leadId: "emp-009" } });
-  await prisma.pod.update({ where: { id: "pod-3" }, data: { leadId: "emp-017" } });
-  await prisma.pod.update({ where: { id: "pod-4" }, data: { leadId: "emp-025" } });
-  console.log("Assigned Pod Leads.");
+  await prisma.pod.update({ where: { id: "pod-2" }, data: { leadId: "emp-011" } });
+  await prisma.pod.update({ where: { id: "pod-3" }, data: { leadId: "emp-021" } });
 
-  // 5. Insert 15 Brands (~80% single-resource, ~20% multi-resource)
   const brands = [
     { id: "brd-01", code: "GLOW", name: "GlowAura D2C" },
     { id: "brd-02", code: "URBN", name: "UrbanPulse" },
     { id: "brd-03", code: "KAVT", name: "Kavita Organics" },
     { id: "brd-04", code: "PURE", name: "PureNourish" },
     { id: "brd-05", code: "ECOV", name: "EcoVibe Home" },
-    { id: "brd-06", code: "BEAU", name: "BellaBotanics" },
-    { id: "brd-07", code: "NOVA", name: "NovaSound Audio" },
-    { id: "brd-08", code: "STEP", name: "StrideFootwear" },
-    { id: "brd-09", code: "SNAC", name: "NutriCrunch Foods" },
-    { id: "brd-10", code: "FITP", name: "FitPro Activewear" },
-    { id: "brd-11", code: "LUMX", name: "Lumina Skin" },
-    { id: "brd-12", code: "ZENL", name: "ZenLiving Decor" },
-    { id: "brd-13", code: "AURA", name: "AuraLifestyle Direct" }, // Multi-resource
-    { id: "brd-14", code: "VELO", name: "Velora Tech Gear" },    // Multi-resource
-    { id: "brd-15", code: "NEXU", name: "Nexus Healthcare" },   // Multi-resource
   ];
 
-  for (const b of brands) {
-    await prisma.brand.create({ data: { id: b.id, code: b.code, name: b.name, active: true } });
-  }
-  console.log(`Created ${brands.length} D2C client brands.`);
+  await prisma.brand.createMany({
+    data: brands.map((brand) => ({ ...brand, active: true })),
+  });
 
-  // 6. Brand Operating Rules
-  const rules = [
-    // GlowAura (CS operates 365 days including Sundays & Holidays)
-    { brandId: "brd-01", processId: "proc-cs", operatingPattern: "ALL_365", operatesOnHolidays: true, defaultMinStaffing: 1 },
-    { brandId: "brd-01", processId: "proc-acc", operatingPattern: "DAILY_EXCEPT_HOLIDAYS", operatesOnHolidays: false, defaultMinStaffing: 1 },
-    { brandId: "brd-01", processId: "proc-ndr", operatingPattern: "SUNDAYS_AND_HOLIDAYS_OFF", operatesOnHolidays: false, defaultMinStaffing: 1 },
+  const rules = brands.flatMap((brand, brandIndex) =>
+    processes.map((process, processIndex) => ({
+      id: `rule-${brandIndex + 1}-${processIndex + 1}`,
+      brandId: brand.id,
+      processId: process.id,
+      operatingPattern: "ALL_365",
+      operatesOnHolidays: true,
+      defaultMinStaffing: 1,
+    })),
+  );
 
-    // UrbanPulse
-    { brandId: "brd-02", processId: "proc-cs", operatingPattern: "DAILY_EXCEPT_HOLIDAYS", operatesOnHolidays: false, defaultMinStaffing: 1 },
-    { brandId: "brd-02", processId: "proc-ndr", operatingPattern: "DAILY_EXCEPT_HOLIDAYS", operatesOnHolidays: false, defaultMinStaffing: 1 },
+  await prisma.brandProcessRule.createMany({ data: rules });
 
-    // Kavita Organics
-    { brandId: "brd-03", processId: "proc-cs", operatingPattern: "DAILY_EXCEPT_HOLIDAYS", operatesOnHolidays: false, defaultMinStaffing: 1 },
-    { brandId: "brd-03", processId: "proc-acc", operatingPattern: "DAILY_EXCEPT_HOLIDAYS", operatesOnHolidays: false, defaultMinStaffing: 1 },
+  const assignments = rules.flatMap((rule, ruleIndex) => {
+    const primary = employees[ruleIndex * 2];
+    const backup = employees[ruleIndex * 2 + 1];
+    return [
+      {
+        id: `asg-${primary.code}`,
+        employeeId: primary.id,
+        brandId: rule.brandId,
+        processId: rule.processId,
+        active: true,
+        isPrimary: true,
+        effectiveFrom: monthStart,
+        effectiveTo: null,
+      },
+      {
+        id: `asg-${backup.code}`,
+        employeeId: backup.id,
+        brandId: rule.brandId,
+        processId: rule.processId,
+        active: true,
+        isPrimary: false,
+        effectiveFrom: monthStart,
+        effectiveTo: null,
+      },
+    ];
+  });
 
-    // AuraLifestyle (Multi-resource: CS needs 2 headcount, operates 365)
-    { brandId: "brd-13", processId: "proc-cs", operatingPattern: "ALL_365", operatesOnHolidays: true, defaultMinStaffing: 2 },
-    { brandId: "brd-13", processId: "proc-acc", operatingPattern: "DAILY_EXCEPT_HOLIDAYS", operatesOnHolidays: false, defaultMinStaffing: 1 },
-    { brandId: "brd-13", processId: "proc-ret", operatingPattern: "SUNDAYS_AND_HOLIDAYS_OFF", operatesOnHolidays: false, defaultMinStaffing: 1 },
+  await prisma.employeeAssignment.createMany({ data: assignments });
 
-    // Velora Tech Gear
-    { brandId: "brd-14", processId: "proc-cs", operatingPattern: "ALL_365", operatesOnHolidays: true, defaultMinStaffing: 1 },
-    { brandId: "brd-14", processId: "proc-ndr", operatingPattern: "DAILY_EXCEPT_HOLIDAYS", operatesOnHolidays: false, defaultMinStaffing: 1 },
-
-    // Nexus Healthcare
-    { brandId: "brd-15", processId: "proc-cs", operatingPattern: "ALL_365", operatesOnHolidays: true, defaultMinStaffing: 1 },
-    { brandId: "brd-15", processId: "proc-acc", operatingPattern: "DAILY_EXCEPT_HOLIDAYS", operatesOnHolidays: false, defaultMinStaffing: 1 },
-  ];
-
-  for (const r of rules) {
-    await prisma.brandProcessRule.create({ data: r });
-  }
-  console.log(`Created ${rules.length} brand-process operating rules.`);
-
-  // 7. Employee Assignments
-  const assignments = [
-    // GlowAura (Single-resource: Priya Sharma handles all processes)
-    { employeeId: "emp-002", brandId: "brd-01", processId: "proc-cs", isPrimary: true },
-    { employeeId: "emp-002", brandId: "brd-01", processId: "proc-acc", isPrimary: true },
-    { employeeId: "emp-002", brandId: "brd-01", processId: "proc-ndr", isPrimary: true },
-
-    // UrbanPulse (Single-resource: Rajesh Kumar)
-    { employeeId: "emp-010", brandId: "brd-02", processId: "proc-cs", isPrimary: true },
-    { employeeId: "emp-010", brandId: "brd-02", processId: "proc-ndr", isPrimary: true },
-
-    // Kavita Organics (Rohan Patel)
-    { employeeId: "emp-003", brandId: "brd-03", processId: "proc-cs", isPrimary: true },
-    { employeeId: "emp-003", brandId: "brd-03", processId: "proc-acc", isPrimary: true },
-
-    // AuraLifestyle (3 employees: Varun Chopra, Tanvi Saxena, Gaurav Sen)
-    { employeeId: "emp-018", brandId: "brd-13", processId: "proc-cs", isPrimary: true },
-    { employeeId: "emp-019", brandId: "brd-13", processId: "proc-cs", isPrimary: true }, // sharing CS for 2 headcount
-    { employeeId: "emp-020", brandId: "brd-13", processId: "proc-acc", isPrimary: true },
-
-    // Velora Tech Gear (Rohan Patel overlapping & Kunal Singhania)
-    { employeeId: "emp-003", brandId: "brd-14", processId: "proc-cs", isPrimary: false },
-    { employeeId: "emp-014", brandId: "brd-14", processId: "proc-ndr", isPrimary: true },
-
-    // Nexus Healthcare
-    { employeeId: "emp-026", brandId: "brd-15", processId: "proc-cs", isPrimary: true },
-    { employeeId: "emp-027", brandId: "brd-15", processId: "proc-acc", isPrimary: true },
-  ];
-
-  for (const a of assignments) {
-    await prisma.employeeAssignment.create({ data: a });
-  }
-  console.log(`Created ${assignments.length} assignments.`);
-
-  // 8. Public Holidays
   const holidays = [
-    { date: new Date("2026-11-14T00:00:00.000Z"), name: "Diwali (Festival Holiday)", description: "National festive holiday", affectsAllProcesses: true },
-    { date: new Date("2026-11-27T00:00:00.000Z"), name: "Guru Nanak Jayanti", description: "Gazetted public holiday", affectsAllProcesses: true },
+    {
+      date: dateForDay(14),
+      name: "Diwali (Festival Holiday)",
+      description: "National festive holiday",
+      affectsAllProcesses: true,
+    },
+    {
+      date: dateForDay(27),
+      name: "Guru Nanak Jayanti",
+      description: "Gazetted public holiday",
+      affectsAllProcesses: true,
+    },
   ];
-  for (const h of holidays) {
-    await prisma.publicHoliday.create({ data: h });
+
+  await prisma.publicHoliday.createMany({ data: holidays });
+
+  const roster = await prisma.roster.create({
+    data: {
+      month,
+      year,
+      status: "DRAFT",
+      generatedAt: new Date(),
+      publishedAt: null,
+    },
+  });
+
+  const assignmentByEmployee = new Map(
+    assignments.map((assignment) => [assignment.employeeId, assignment]),
+  );
+  const weeklyOffByEmployee = new Map(
+    weeklyOffs.map((weeklyOff) => [weeklyOff.employeeId, weeklyOff.dayOfWeek]),
+  );
+  const holidayByDay = new Map(holidays.map((holiday) => [dateKey(holiday.date.getUTCDate()), holiday]));
+
+  const entries = [];
+  const allocations = [];
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = dateForDay(day);
+    const dayOfWeek = date.getUTCDay();
+    const holiday = holidayByDay.get(dateKey(day));
+
+    for (const employee of employees) {
+      const assignment = assignmentByEmployee.get(employee.id);
+      const isWeeklyOff = weeklyOffByEmployee.get(employee.id) === dayOfWeek;
+      const shouldAllocate = !isWeeklyOff && (dayOfWeek === 0 ? !assignment.isPrimary : assignment.isPrimary);
+      const entryId = `entry-${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}-${employee.code}`;
+
+      let status = "UNASSIGNED";
+      let notes = "Available / Unassigned";
+
+      if (shouldAllocate) {
+        status = "WORKING";
+        notes = `${brands.find((brand) => brand.id === assignment.brandId).code}:${
+          processes.find((process) => process.id === assignment.processId).code
+        }`;
+        allocations.push({
+          id: `alloc-${entryId}`,
+          rosterEntryId: entryId,
+          brandId: assignment.brandId,
+          processId: assignment.processId,
+        });
+      } else if (isWeeklyOff) {
+        status = "WEEKLY_OFF";
+        notes = "Scheduled Weekly Off";
+      } else if (holiday) {
+        status = "PUBLIC_HOLIDAY";
+        notes = holiday.name;
+      }
+
+      entries.push({
+        id: entryId,
+        rosterId: roster.id,
+        employeeId: employee.id,
+        date,
+        status,
+        notes,
+      });
+    }
   }
-  console.log(`Created ${holidays.length} public holidays.`);
 
-  // 9. Leaves & Comp-Offs
-  await prisma.leave.create({
+  await prisma.rosterEntry.createMany({ data: entries });
+  await prisma.rosterAllocation.createMany({ data: allocations });
+
+  await prisma.auditLog.create({
     data: {
-      employeeId: "emp-002", // Priya Sharma
-      startDate: new Date("2026-11-15T00:00:00.000Z"),
-      endDate: new Date("2026-11-16T00:00:00.000Z"),
-      type: "SICK",
-      status: "APPROVED",
-      reason: "Medical procedure (creates single-resource coverage gap on Sunday Nov 15)",
+      action: "ROSTER_GENERATED",
+      entity: "Roster",
+      entityId: roster.id,
+      details: `Seeded clean roster for ${month}/${year}: ${entries.length} entries, ${allocations.length} allocations.`,
     },
   });
 
-  await prisma.leave.create({
-    data: {
-      employeeId: "emp-006",
-      startDate: new Date("2026-11-08T00:00:00.000Z"),
-      endDate: new Date("2026-11-09T00:00:00.000Z"),
-      type: "CASUAL",
-      status: "APPROVED",
-      reason: "Personal family event",
-    },
-  });
-
-  await prisma.leave.create({
-    data: {
-      employeeId: "emp-021",
-      startDate: new Date("2026-11-22T00:00:00.000Z"),
-      endDate: new Date("2026-11-23T00:00:00.000Z"),
-      type: "PLANNED",
-      status: "PENDING",
-      reason: "Out of station travel (pending approval)",
-    },
-  });
-
-  await prisma.compOff.create({
-    data: {
-      employeeId: "emp-010", // Rajesh Kumar
-      date: new Date("2026-11-20T00:00:00.000Z"),
-      status: "APPROVED",
-      reason: "Approved comp-off for working prior national holiday",
-    },
-  });
-  console.log("Created leaves and comp-offs.");
-
+  console.log(
+    `Created ${employees.length} employees, ${brands.length} brands, ${rules.length} rules, ${assignments.length} assignments, ${holidays.length} holidays.`,
+  );
+  console.log(
+    `Created clean roster ${month}/${year} with ${entries.length} entries, ${allocations.length} allocations, and 0 issues.`,
+  );
   console.log("Database seeded successfully!");
 }
 
 main()
-  .catch((e) => {
-    console.error("Seeding error:", e);
+  .catch((error) => {
+    console.error("Seeding error:", error);
     process.exit(1);
   })
   .finally(async () => {

@@ -17,6 +17,7 @@ The MVP was completed in stages:
    - Converted the availability page to database-backed server rendering.
    - Added leave and comp-off CRUD with approval/reject status transitions.
    - Validated date ranges, active employees, overlaps, duplicate comp-offs, and required fields.
+   - Standardized leave and comp-off status badges to `Approved`, `Pending`, and `Rejected` with green, amber, and neutral colours.
    - Smoke-tested leave and comp-off create, edit, status change, approve, reject, and delete flows.
 
 3. Roster generation core
@@ -48,6 +49,25 @@ The MVP was completed in stages:
    - Surfaced revalidation failures in master-data and availability action messages.
    - Applied the public-holiday scope flag to employee public-holiday labelling while keeping brand-process holiday coverage authoritative.
 
+7. Clean reset dataset
+   - Replaced the conflict-heavy demo seed with 30 employees, 3 pods, 5 brands, 3 processes, 15 brand-process rules, and 30 assignments.
+   - Pre-generated the current-month roster with 900 entries, 450 allocations, and zero validation issues.
+   - Retained two public holidays with every brand-process rule operating on holidays; no leave or comp-off records are seeded.
+   - Made the sidebar coverage badge and roster header status read the current-month issue count, hiding zero-value badges.
+
+8. Navigation loading states
+   - Added route-level skeletons for master data, availability, holidays, issues, roster, and dashboard pages.
+   - Kept the sidebar mounted during route transitions with a shared loading shell.
+   - Consolidated the coverage-count fetch into one provider shared by the sidebar and header.
+   - Removed blocking instant-navigation opt-outs so dynamic routes can prefetch their shell and show skeletons immediately.
+
+9. Availability-driven roster sync and live telemetry
+   - Approved leave and comp-off records recompute affected draft roster dates from the engine, so statuses show `LEAVE` or `COMP_OFF` and allocations reflect the next eligible resource.
+   - Rejected or deleted availability records restore the baseline for affected draft dates.
+   - Published rosters remain frozen and are only revalidated so new conflict issues become visible.
+   - Replaced the dashboard's mock conflict list with persisted current-month issues.
+   - Added `Effective From` and `Effective To` form hints and clarified that a pod lead does not block roster allocation.
+
 ## Features
 
 - Master-data management for employees, pods, brands, processes, assignments, weekly offs, and public holidays.
@@ -57,8 +77,12 @@ The MVP was completed in stages:
 - Draft persistence with manual roster entry edits.
 - Five roster views: company, pod, brand, process, and employee.
 - Coverage issues page with severity filters and manager actions.
+- Sidebar coverage badge and roster header status driven by the current-month persisted issue count.
+- Route-level skeleton loading states with a persistent sidebar and shared coverage-count fetch.
 - Publication gate that blocks rosters with mandatory errors.
-- Revalidation of all rosters after master-data or availability changes while preserving manual edits.
+- Revalidation after master-data changes while preserving manual edits.
+- Availability changes recompute affected draft dates and restore the baseline on reject/delete; published schedules stay frozen.
+- Dashboard conflict telemetry driven by persisted current-month issues.
 - Protected health and seed API.
 - Seed data with realistic multi-brand, multi-process scheduling scenarios.
 
@@ -127,7 +151,7 @@ Human-controlled:
 - Publishing a valid roster.
 - Database reset and deployment.
 
-Published rosters are locked: they cannot be regenerated or manually edited. They can still be revalidated so new issues become visible, but configuration changes never rewrite published schedules or status. Revalidation failures from master-data and availability actions are surfaced in the action message instead of being silently ignored.
+Published rosters are locked: they cannot be regenerated or manually edited. They can still be revalidated so new issues become visible, but configuration and availability changes never rewrite published schedules or status. Draft rosters affected by leave or comp-off changes are recomputed from the engine for those dates; rejecting or deleting availability restores the baseline for those dates. Revalidation failures from master-data and availability actions are surfaced in the action message instead of being silently ignored.
 
 ## Local setup
 
@@ -146,13 +170,15 @@ cp .env.example .env
 
 Set `DATABASE_URL` in `.env` to your PostgreSQL connection string. Set `SEED_API_TOKEN` to a long random value if you want to use the protected seed API endpoint.
 
-Apply the schema and seed sample data:
+Apply the schema and seed the clean dataset:
 
 ```bash
 npx prisma generate
 npx prisma db push
 npm run db:seed
 ```
+
+The seed is destructive: it clears all operational rows, then inserts 30 employees, 3 pods, 5 brands, 3 processes, 30 assignments, 2 public holidays, and a clean current-month roster with zero issues.
 
 Start the app:
 
@@ -186,10 +212,12 @@ Completed verification:
 
 - `npm run lint` passed.
 - `npx tsc --noEmit` passed.
-- `npm run build` passed with 15/15 static pages generated.
-- Browser smoke tests covered master-data CRUD, availability CRUD, roster generation, roster views, issue persistence, manual edits, allocation removal, post-change revalidation, single-allocation reassignment, working-status-without-allocation rejection, and non-operating-day allocation rejection.
+- `npm run build` passed with 16/16 static pages generated.
+- Browser smoke tests covered master-data CRUD, availability CRUD, availability status badge consistency, roster generation, roster views, issue persistence, manual edits, allocation removal, post-change revalidation, single-allocation reassignment, working-status-without-allocation rejection, and non-operating-day allocation rejection.
+- Browser navigation checks confirmed partial prerendering on every dynamic page, a persistent sidebar, loading skeletons on route transitions, and a single shared coverage-count request.
 - Browser console checks showed no runtime errors after final reload.
-- Database was reset with `npm run db:seed` after testing.
+- Browser availability status-change checks confirmed that approving Anita Roy's 2026-11-02 leave changes the roster entry to `LEAVE`, rejecting it restores `WORKING` with zero issues, and dashboard, sidebar, issues page, and count API all report the same single coverage gap.
+- Final database reset produced the clean 30-employee, 5-brand dataset with a zero-issue roster and no sidebar coverage badge.
 
 ## Deployment
 
@@ -199,7 +227,7 @@ For deployment:
 
 1. Create a Neon database.
 2. Set `DATABASE_URL` and `SEED_API_TOKEN` as Vercel environment variables.
-3. Run `npx prisma db push` and `npm run db:seed` against the production database.
+3. Run `npx prisma db push` and `npm run db:seed` against the production database to load the clean dataset.
 4. Deploy the repository to Vercel.
 5. Confirm `/api/seed` reports a database connection.
 

@@ -119,6 +119,65 @@ export interface HolidayRow {
   affectsAllProcesses: boolean;
 }
 
+export interface DashboardIssue {
+  id: string;
+  date: string;
+  severity: "ERROR" | "WARNING";
+  issueType: string;
+  brandName?: string;
+  processName?: string;
+  employeeName?: string;
+  requiredStaffing?: number;
+  allocatedStaffing?: number;
+  message: string;
+  suggestion?: string;
+}
+
+export async function getCurrentIssueCount(): Promise<number> {
+  const now = new Date();
+  return prisma.validationIssue.count({
+    where: {
+      roster: {
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+      },
+    },
+  });
+}
+
+export async function getCurrentRosterIssues(): Promise<DashboardIssue[]> {
+  await connection();
+  const now = new Date();
+  const issues = await prisma.validationIssue.findMany({
+    where: {
+      roster: {
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+      },
+    },
+    include: {
+      brand: { select: { name: true } },
+      process: { select: { name: true } },
+      employee: { select: { name: true } },
+    },
+    orderBy: [{ severity: "asc" }, { date: "asc" }, { id: "asc" }],
+  });
+
+  return issues.map((issue) => ({
+    id: issue.id,
+    date: format(issue.date, "EEE, MMM d, yyyy"),
+    severity: issue.severity,
+    issueType: issue.issueType,
+    brandName: issue.brand?.name ?? undefined,
+    processName: issue.process?.name ?? undefined,
+    employeeName: issue.employee?.name ?? undefined,
+    requiredStaffing: issue.requiredStaffing ?? undefined,
+    allocatedStaffing: issue.allocatedStaffing ?? undefined,
+    message: issue.message,
+    suggestion: issue.suggestion ?? undefined,
+  }));
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export async function getDashboardStats(): Promise<DashboardStats> {

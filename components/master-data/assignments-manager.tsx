@@ -68,8 +68,19 @@ export function AssignmentsManager({
     { name: "employeeId", label: "Employee", type: "select", required: true, options: toOptions(employees) },
     { name: "brandId", label: "Brand", type: "select", required: true, options: toOptions(brands) },
     { name: "processId", label: "Process", type: "select", required: true, options: toOptions(processes) },
-    { name: "effectiveFrom", label: "Effective From", type: "date", required: true },
-    { name: "effectiveTo", label: "Effective To", type: "date" },
+    {
+      name: "effectiveFrom",
+      label: "Effective From",
+      type: "date",
+      required: true,
+      hint: "First date this employee is eligible for this brand and process.",
+    },
+    {
+      name: "effectiveTo",
+      label: "Effective To",
+      type: "date",
+      hint: "Last eligible date. Leave blank for open-ended.",
+    },
     { name: "isPrimary", label: "Primary assignment", type: "checkbox" },
     { name: "active", label: "Active", type: "checkbox" },
   ];

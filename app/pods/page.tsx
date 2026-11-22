@@ -7,8 +7,6 @@ export const metadata = {
   title: "Operational Pods | Smart Roster Management",
 };
 
-export const instant = false;
-
 export default async function PodsPage() {
   const [pods, employees] = await Promise.all([getPodsWithMembers(), getEmployees()]);
 

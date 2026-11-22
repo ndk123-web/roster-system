@@ -6,8 +6,6 @@ export const metadata = {
   title: "Monthly Roster | Smart Roster Management",
 };
 
-export const instant = false;
-
 function parsePeriod(value: string | undefined, fallback: number, min: number, max: number) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;

@@ -1108,6 +1108,131 @@ export async function publishRoster(month: number, year: number): Promise<void> 
   });
 }
 
+export interface AvailabilitySyncInput {
+  employeeId: string;
+  dates: Date[];
+}
+
+async function syncAvailabilityToRosters({
+  employeeId,
+  dates,
+}: AvailabilitySyncInput): Promise<void> {
+  if (dates.length === 0) return;
+
+  const grouped = new Map<string, { month: number; year: number; dates: Date[] }>();
+  for (const date of dates) {
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    const key = `${year}-${month}`;
+    const group = grouped.get(key) ?? { month, year, dates: [] };
+    group.dates.push(date);
+    grouped.set(key, group);
+  }
+
+  for (const group of grouped.values()) {
+    const [roster, input] = await Promise.all([
+      prisma.roster.findUnique({
+        where: { month_year: { month: group.month, year: group.year } },
+        select: { id: true, status: true },
+      }),
+      loadGenerationInput(group.month, group.year),
+    ]);
+
+    if (!roster) continue;
+
+    if (roster.status !== "PUBLISHED") {
+      const baseline = generateMonthlyRoster(input);
+      const dateKeys = new Set(group.dates.map((date) => formatDate(date)));
+      const dateValues = [...dateKeys].map((date) => calendarDate(date));
+      const employeeIds = Object.keys(baseline.employeeSchedules);
+      const entryRows = Object.entries(baseline.employeeSchedules).flatMap(([id, days]) =>
+        days
+          .filter((day) => dateKeys.has(day.date))
+          .map((day) => ({
+            employeeId: id,
+            date: calendarDate(day.date),
+            status: day.status,
+            notes: day.detail,
+          })),
+      );
+
+      await prisma.$transaction(
+        async (tx) => {
+          if (entryRows.length > 0) {
+            await tx.rosterEntry.deleteMany({
+              where: {
+                rosterId: roster.id,
+                date: { in: dateValues },
+                employeeId: { in: employeeIds },
+              },
+            });
+            await tx.rosterEntry.createMany({
+              data: entryRows.map((entry) => ({ ...entry, rosterId: roster.id })),
+            });
+
+            const storedEntries = await tx.rosterEntry.findMany({
+              where: { rosterId: roster.id, date: { in: dateValues } },
+              select: { id: true, employeeId: true, date: true },
+            });
+            const entryIdByKey = new Map(
+              storedEntries.map((entry) => [
+                `${entry.employeeId}|${formatDate(entry.date)}`,
+                entry.id,
+              ]),
+            );
+
+            const allocationRows = Object.entries(baseline.employeeSchedules).flatMap(
+              ([id, days]) =>
+                days
+                  .filter((day) => dateKeys.has(day.date))
+                  .flatMap((day) =>
+                    day.allocations.flatMap((allocation) => {
+                      const rosterEntryId = entryIdByKey.get(`${id}|${day.date}`);
+                      if (!rosterEntryId) return [];
+                      return [
+                        {
+                          rosterEntryId,
+                          brandId: allocation.brandId,
+                          processId: allocation.processId,
+                        },
+                      ];
+                    }),
+                  ),
+            );
+
+            if (allocationRows.length > 0) {
+              await tx.rosterAllocation.createMany({ data: allocationRows });
+            }
+          }
+
+          await tx.auditLog.create({
+            data: {
+              action: "AVAILABILITY_SYNC",
+              entity: "Roster",
+              entityId: roster.id,
+              details: `${employeeId} synced ${dateKeys.size} day(s) from availability changes`,
+            },
+          });
+        },
+        { timeout: 60000, maxWait: 10000 },
+      );
+    }
+
+    await validateAndSaveRoster(group.month, group.year);
+  }
+}
+
+export async function syncAvailabilityToRostersQuietly(
+  input: AvailabilitySyncInput,
+): Promise<string | null> {
+  try {
+    await syncAvailabilityToRosters(input);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Could not sync rosters with availability.";
+  }
+}
+
 export async function revalidateRosters(): Promise<void> {
   const rosters = await prisma.roster.findMany({
     select: { month: true, year: true },

@@ -8,8 +8,6 @@ export const metadata = {
   title: "Availability & Leave | Smart Roster Management",
 };
 
-export const instant = false;
-
 export default async function AvailabilityPage() {
   const [leaves, compOffs, employees] = await Promise.all([
     getLeaves(),

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useIssueCount } from "@/components/layout/issue-count-provider";
 import {
   DashboardIcon,
   UsersIcon,
@@ -19,20 +20,12 @@ interface NavItem {
   name: string;
   href: string;
   icon: typeof DashboardIcon;
-  badge?: string;
-  badgeVariant?: "default" | "error" | "warning";
 }
 
 const primaryNav: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: DashboardIcon },
   { name: "Monthly Roster", href: "/roster", icon: CalendarIcon },
-  {
-    name: "Coverage Issues",
-    href: "/issues",
-    icon: AlertIcon,
-    badge: "3",
-    badgeVariant: "error",
-  },
+  { name: "Coverage Issues", href: "/issues", icon: AlertIcon },
 ];
 
 const managementNav: NavItem[] = [
@@ -50,6 +43,7 @@ const scheduleRulesNav: NavItem[] = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { count: issueCount } = useIssueCount();
 
   return (
     <aside
@@ -85,6 +79,7 @@ export function AppSidebar() {
             {primaryNav.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
+              const badge = item.href === "/issues" ? issueCount : null;
               return (
                 <Link
                   key={item.href}
@@ -104,17 +99,13 @@ export function AppSidebar() {
                     />
                     <span className="truncate">{item.name}</span>
                   </div>
-                  {item.badge && (
+                  {badge !== null && badge > 0 && (
                     <span
                       className={`px-1.5 py-0.2 text-[10px] font-semibold rounded tabular-nums ${
-                        item.badgeVariant === "error"
-                          ? isActive
-                            ? "bg-red-500 text-white"
-                            : "bg-red-100 text-red-700"
-                          : "bg-neutral-200 text-neutral-800"
+                        isActive ? "bg-red-500 text-white" : "bg-red-100 text-red-700"
                       }`}
                     >
-                      {item.badge}
+                      {badge}
                     </span>
                   )}
                 </Link>
