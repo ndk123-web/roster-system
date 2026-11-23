@@ -22,6 +22,7 @@ interface BrandRow {
   code: string;
   name: string;
   active: boolean;
+  startDate: string | null;
   isSingleResource: boolean;
   rules: BrandRuleRow[];
   assignedEmployeeCount: number;
@@ -37,6 +38,7 @@ interface ProcessOption {
 const fields: EntityField[] = [
   { name: "code", label: "Brand Code", type: "text", required: true, placeholder: "BRD-ALPHA" },
   { name: "name", label: "Brand Name", type: "text", required: true },
+  { name: "startDate", label: "Start Date", type: "date", required: true },
   { name: "active", label: "Active", type: "checkbox" },
 ];
 
@@ -58,8 +60,14 @@ export function BrandsManager({
   const closeDelete = useCallback(() => setDeleting(null), []);
 
   const values: EntityValues = editing
-    ? { id: editing.id, code: editing.code, name: editing.name, active: editing.active }
-    : { active: true };
+    ? {
+        id: editing.id,
+        code: editing.code,
+        name: editing.name,
+        startDate: editing.startDate ?? "",
+        active: editing.active,
+      }
+    : { startDate: new Date().toISOString().slice(0, 10), active: true };
 
   return (
     <div className="bg-white rounded-lg border border-neutral-200 shadow-xs overflow-hidden">
@@ -95,6 +103,7 @@ export function BrandsManager({
                     <span className="font-semibold text-neutral-900">{brand.name}</span>
                   </div>
                   <div className="text-[10px] text-neutral-400 mt-0.5 pl-5">
+                    {brand.startDate ? `From ${brand.startDate} · ` : ""}
                     {brand.assignedEmployeeCount} assigned employee
                     {brand.assignedEmployeeCount !== 1 ? "s" : ""}
                   </div>
@@ -108,6 +117,7 @@ export function BrandsManager({
                   <BrandRulesManager
                     brandId={brand.id}
                     brandName={brand.name}
+                    brandStartDate={brand.startDate}
                     rules={brand.rules}
                     processes={processes}
                   />

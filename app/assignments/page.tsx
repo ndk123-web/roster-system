@@ -23,8 +23,7 @@ export default async function AssignmentsPage() {
   return (
     <AppShell>
       <AppHeader
-        title="Resource Assignments & Allocations"
-        subtitle="Manage employee eligibility across client brands and operational processes"
+        title="Assignments"
       />
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto">

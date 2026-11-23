@@ -55,6 +55,7 @@ export interface EngineRule {
   customDaysOfWeek: number[];
   operatesOnHolidays: boolean;
   defaultMinStaffing: number;
+  startDate: string | null;
   customStaffingRules: EngineCustomStaffingRule[];
 }
 
@@ -239,6 +240,10 @@ function getRequiredStaffing(
   return Math.max(0, rule.defaultMinStaffing);
 }
 
+export function isRuleActive(rule: EngineRule, dateStr: string): boolean {
+  return !rule.startDate || dateStr >= rule.startDate;
+}
+
 export function isRuleOperating(
   rule: EngineRule,
   dateStr: string,
@@ -333,6 +338,7 @@ export function generateMonthlyRoster(input: GenerationInput): GenerationResult 
         const brand = brandMap.get(rule.brandId);
         const process = processMap.get(rule.processId);
         if (!brand || !process || !brand.active || !process.active) return null;
+        if (!isRuleActive(rule, dateStr)) return null;
 
         const operating = isRuleOperating(rule, dateStr, dayOfWeek, holiday);
         const requiredStaffing = operating
@@ -519,6 +525,7 @@ export function generateMonthlyRoster(input: GenerationInput): GenerationResult 
                 (rule) =>
                   rule.brandId === assignment.brandId &&
                   rule.processId === assignment.processId &&
+                  isRuleActive(rule, dateStr) &&
                   !rule.operatesOnHolidays,
               ),
           ));

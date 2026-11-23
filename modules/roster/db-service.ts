@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   calendarDate,
   generateMonthlyRoster,
+  isRuleActive,
   isRuleOperating,
   type ComputedEmployeeDay,
   type ComputedIssue,
@@ -133,6 +134,8 @@ export async function loadGenerationInput(
     brandEmployees.set(assignment.brandId, set);
   }
 
+  const brandById = new Map(brands.map((brand) => [brand.id, brand]));
+
   const mappedBrands: EngineBrand[] = brands.map((brand) => ({
     id: brand.id,
     code: brand.code,
@@ -174,6 +177,9 @@ export async function loadGenerationInput(
       customDaysOfWeek: [...rule.customDaysOfWeek].sort((left, right) => left - right),
       operatesOnHolidays: rule.operatesOnHolidays,
       defaultMinStaffing: rule.defaultMinStaffing,
+      startDate: (rule.startDate ?? brandById.get(rule.brandId)?.startDate)
+        ? formatDate((rule.startDate ?? brandById.get(rule.brandId)?.startDate)!)
+        : null,
       customStaffingRules: rule.customStaffingRules.map((item) => ({
         dayOfWeek: item.dayOfWeek,
         specificDate: item.specificDate ? formatDate(item.specificDate) : null,
@@ -487,7 +493,7 @@ export async function validateAndSaveRoster(
       );
       const holiday = input.holidays.find((item) => item.date === dateStr);
       const operating = rule
-        ? isRuleOperating(rule, dateStr, dayOfWeek, holiday)
+        ? isRuleActive(rule, dateStr) && isRuleOperating(rule, dateStr, dayOfWeek, holiday)
         : false;
       if (!operating) {
         issues.push({
@@ -660,7 +666,11 @@ export async function updateRosterEntry(
         (item) => item.brandId === brandId && item.processId === processId,
       );
       const holiday = config.holidays.find((item) => item.date === dateStr);
-      if (!rule || !isRuleOperating(rule, dateStr, date.getDay(), holiday)) {
+      if (
+        !rule ||
+        !isRuleActive(rule, dateStr) ||
+        !isRuleOperating(rule, dateStr, date.getDay(), holiday)
+      ) {
         throw new Error("Selected brand-process does not operate on the chosen date.");
       }
 

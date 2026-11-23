@@ -64,10 +64,7 @@ export function IssuesManager({
 
   return (
     <AppShell>
-      <AppHeader
-        title="Coverage Diagnostics & Constraint Telemetry"
-        subtitle="Persisted validation results, mandatory publication gates, and change-driven revalidation"
-      />
+      <AppHeader title="Issues" />
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
         <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -151,10 +148,10 @@ export function IssuesManager({
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: "Total Issues", value: issues.length },
-                { label: "Mandatory Gaps", value: errors },
+                { label: "Total", value: issues.length },
+                { label: "Gaps", value: errors },
                 { label: "Warnings", value: warnings },
-                { label: "Coverage Health", value: `${view.result.summary.coverageHealthPercentage}%` },
+                { label: "Coverage", value: `${view.result.summary.coverageHealthPercentage}%` },
               ].map((stat) => (
                 <div key={stat.label} className="bg-white rounded-lg border border-neutral-200 p-4 shadow-xs">
                   <div className="text-[11px] text-neutral-500 mb-1">{stat.label}</div>
@@ -169,8 +166,8 @@ export function IssuesManager({
               <div className="flex flex-wrap items-center gap-2">
                 {(
                   [
-                    ["ALL", `All Telemetry (${issues.length})`],
-                    ["ERROR", `Mandatory Gaps (${errors})`],
+                    ["ALL", `All (${issues.length})`],
+                    ["ERROR", `Gaps (${errors})`],
                     ["WARNING", `Warnings (${warnings})`],
                   ] as const
                 ).map(([value, label]) => (
@@ -189,9 +186,9 @@ export function IssuesManager({
                 ))}
               </div>
               <div className="text-xs text-neutral-500">
-                Publish status:{" "}
+                Publish:{" "}
                 <span className="font-semibold text-neutral-800">
-                  {errors > 0 ? "Blocked — resolve mandatory gaps" : "Ready to publish"}
+                  {errors > 0 ? "Blocked" : "Ready"}
                 </span>
               </div>
             </div>
@@ -206,7 +203,7 @@ export function IssuesManager({
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant={issue.severity === "ERROR" ? "error" : "warning"}>
                         <AlertIcon className="w-3 h-3" />
-                        {issue.severity === "ERROR" ? "Mandatory Gap" : "Rule Warning"}
+                        {issue.severity === "ERROR" ? "Gap" : "Warning"}
                       </Badge>
                       {issue.brandName && (
                         <span className="text-xs font-semibold text-neutral-900" translate="no">
@@ -237,7 +234,7 @@ export function IssuesManager({
                     </p>
                     {issue.suggestion && (
                       <div className="text-[11px] text-neutral-500">
-                        <span className="font-semibold text-neutral-700">Recommendation:</span>{" "}
+                        <span className="font-semibold text-neutral-700">Fix:</span>{" "}
                         {issue.suggestion}
                       </div>
                     )}
@@ -260,14 +257,12 @@ export function IssuesManager({
                 <div className="bg-white rounded-lg border border-neutral-200 p-12 text-center shadow-xs">
                   <CheckIcon className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
                   <h3 className="text-sm font-semibold text-neutral-900">
-                    {issues.length === 0
-                      ? "Zero Detected Conflicts"
-                      : "All displayed issues acknowledged"}
+                    {issues.length === 0 ? "No issues" : "All issues acknowledged"}
                   </h3>
                   <p className="text-xs text-neutral-500 mt-1">
                     {issues.length === 0
-                      ? "All operating calendars, staffing thresholds, and availability rules are satisfied."
-                      : "Change the severity filter to review the remaining validation results."}
+                      ? "All coverage requirements are satisfied."
+                      : "Change the filter to review the remaining issues."}
                   </p>
                 </div>
               )}
@@ -280,7 +275,7 @@ export function IssuesManager({
         open={dialog === "generate"}
         onClose={() => setDialog(null)}
         title={view.meta ? "Regenerate monthly roster?" : "Generate monthly roster?"}
-        description="This replaces the current draft and its validation results for the selected month."
+        description="This replaces the current draft for the selected month."
         confirmLabel="Generate"
         action={generateRoster}
         id=""
@@ -291,7 +286,7 @@ export function IssuesManager({
         open={dialog === "revalidate"}
         onClose={() => setDialog(null)}
         title="Revalidate draft rosters?"
-        description="Validation results are recalculated using the current master data and availability records."
+        description="Recalculates drafts using current data. Published rosters are unchanged."
         confirmLabel="Revalidate"
         action={revalidateRosters}
         id=""

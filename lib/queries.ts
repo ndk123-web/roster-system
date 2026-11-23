@@ -51,6 +51,7 @@ export interface BrandRow {
   code: string;
   name: string;
   active: boolean;
+  startDate: string | null;
   isSingleResource: boolean; // derived: uniqueEmployees ≤ 1
   rules: {
     id: string;
@@ -62,6 +63,7 @@ export interface BrandRow {
     customDaysOfWeek: number[];
     operatesOnHolidays: boolean;
     defaultMinStaffing: number;
+    startDate: string | null;
     customStaffingRules: {
       id: string;
       dayOfWeek: number | null;
@@ -360,6 +362,7 @@ export async function getBrandsWithRules(): Promise<BrandRow[]> {
       code: b.code,
       name: b.name,
       active: b.active,
+      startDate: b.startDate ? format(b.startDate, "yyyy-MM-dd") : null,
       isSingleResource: uniqueEmployees <= 1,
       assignedEmployeeCount: uniqueEmployees,
       rules: b.rules.map((r) => ({
@@ -372,6 +375,7 @@ export async function getBrandsWithRules(): Promise<BrandRow[]> {
         customDaysOfWeek: [...r.customDaysOfWeek].sort((left, right) => left - right),
         operatesOnHolidays: r.operatesOnHolidays,
         defaultMinStaffing: r.defaultMinStaffing,
+        startDate: r.startDate ? format(r.startDate, "yyyy-MM-dd") : null,
         customStaffingRules: r.customStaffingRules.map((rule) => ({
           id: rule.id,
           dayOfWeek: rule.dayOfWeek,
@@ -436,7 +440,7 @@ export async function getActiveBrandOptions() {
   await connection();
   return prisma.brand.findMany({
     where: { active: true },
-    select: { id: true, name: true, code: true },
+    select: { id: true, name: true, code: true, startDate: true },
     orderBy: { code: "asc" },
   });
 }

@@ -3,12 +3,11 @@
 import { useSyncExternalStore } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCwIcon, CalendarIcon } from "@/components/ui/icons";
+import { CalendarIcon } from "@/components/ui/icons";
 import { useIssueCount } from "@/components/layout/issue-count-provider";
 
 interface AppHeaderProps {
   title?: string;
-  subtitle?: string;
 }
 
 const subscribe = () => () => {};
@@ -19,10 +18,7 @@ const formatCurrentMonth = () =>
     year: "numeric",
   });
 
-export function AppHeader({
-  title = "Operations Dashboard",
-  subtitle = "Workforce allocation, brand coverage, and conflict telemetry",
-}: AppHeaderProps) {
+export function AppHeader({ title = "Dashboard" }: AppHeaderProps) {
   const { count: issueCount } = useIssueCount();
   const monthLabel = useSyncExternalStore(subscribe, formatCurrentMonth, () => "Current month");
 
@@ -33,9 +29,6 @@ export function AppHeader({
           <h1 className="text-sm font-semibold text-neutral-900 tracking-tight truncate">
             {title}
           </h1>
-          <p className="text-[11px] text-neutral-500 truncate hidden sm:block">
-            {subtitle}
-          </p>
         </div>
       </div>
 
@@ -56,17 +49,6 @@ export function AppHeader({
             Draft{issueCount !== null && issueCount > 0 ? ` (${issueCount} Issues)` : ""}
           </Badge>
         </div>
-
-        {/* Action Buttons */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="hidden md:inline-flex"
-          aria-label="Revalidate roster constraints"
-        >
-          <RefreshCwIcon className="w-3.5 h-3.5 text-neutral-600" />
-          <span>Revalidate</span>
-        </Button>
 
         <Button
           variant="primary"

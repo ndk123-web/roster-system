@@ -13,8 +13,7 @@ export default async function ProcessesPage() {
   return (
     <AppShell>
       <AppHeader
-        title="Operational Processes & Workflows"
-        subtitle="Configure enterprise operational processes reusable across D2C brands (CS, ACC, NDR, Retention)"
+        title="Processes"
       />
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto">

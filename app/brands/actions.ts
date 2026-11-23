@@ -116,6 +116,7 @@ export async function createBrand(
   const errors: FieldErrors = {};
   const code = readRequiredString(formData, "code", "Brand code", errors, 40);
   const name = readRequiredString(formData, "name", "Brand name", errors, 120);
+  const startDate = readDate(formData, "startDate", "Start date", errors);
   const active = readBoolean(formData, "active");
 
   if (hasErrors(errors)) return errorState("Fix the highlighted fields.", errors);
@@ -130,7 +131,7 @@ export async function createBrand(
       if (duplicate.name === name) errors.name = "Brand name already exists.";
       return errorState("Fix the highlighted fields.", errors);
     }
-    await prisma.brand.create({ data: { code, name, active } });
+    await prisma.brand.create({ data: { code, name, active, startDate } });
   } catch (error) {
     if (applyUniqueError(error, { code: "code", name: "name" }, errors)) {
       return errorState("Fix the highlighted fields.", errors);
@@ -153,6 +154,7 @@ export async function updateBrand(
   const errors: FieldErrors = {};
   const code = readRequiredString(formData, "code", "Brand code", errors, 40);
   const name = readRequiredString(formData, "name", "Brand name", errors, 120);
+  const startDate = readDate(formData, "startDate", "Start date", errors);
   const active = readBoolean(formData, "active");
 
   if (hasErrors(errors)) return errorState("Fix the highlighted fields.", errors);
@@ -167,7 +169,7 @@ export async function updateBrand(
       if (duplicate.name === name) errors.name = "Brand name already exists.";
       return errorState("Fix the highlighted fields.", errors);
     }
-    await prisma.brand.update({ where: { id }, data: { code, name, active } });
+    await prisma.brand.update({ where: { id }, data: { code, name, active, startDate } });
   } catch (error) {
     if (isRecordNotFound(error)) return errorState("Brand not found.");
     if (applyUniqueError(error, { code: "code", name: "name" }, errors)) {
@@ -222,6 +224,7 @@ export async function createBrandRule(
     max: 50,
   });
   const customStaffing = readCustomStaffing(formData, errors);
+  const ruleStartDate = readDate(formData, "startDate", "Rule start date", errors, false);
 
   if (!brandId) errors.brandId = "Missing brand id.";
   if (!processId) errors.processId = "Select a process.";
@@ -231,7 +234,7 @@ export async function createBrandRule(
   let processCode = "process";
   try {
     const [brand, process] = await Promise.all([
-      prisma.brand.findUnique({ where: { id: brandId }, select: { id: true } }),
+      prisma.brand.findUnique({ where: { id: brandId }, select: { id: true, startDate: true } }),
       prisma.process.findUnique({ where: { id: processId }, select: { code: true } }),
     ]);
     if (!brand) errors.brandId = "Brand not found.";
@@ -257,6 +260,7 @@ export async function createBrandRule(
           customDaysOfWeek: operatingPattern === OperatingPattern.CUSTOM ? customDaysOfWeek : [],
           operatesOnHolidays,
           defaultMinStaffing: defaultMinStaffing!,
+          startDate: ruleStartDate ?? brand?.startDate ?? null,
         },
       });
       await writeCustomStaffing(tx, rule.id, customStaffing);
@@ -302,6 +306,7 @@ export async function updateBrandRule(
     max: 50,
   });
   const customStaffing = readCustomStaffing(formData, errors);
+  const ruleStartDate = readDate(formData, "startDate", "Rule start date", errors, false);
 
   if (!id) return errorState("Missing rule id.");
   if (!brandId) errors.brandId = "Missing brand id.";
@@ -314,7 +319,7 @@ export async function updateBrandRule(
     const [rule, process] = await Promise.all([
       prisma.brandProcessRule.findFirst({
         where: { id, brandId },
-        select: { id: true },
+        select: { id: true, brand: { select: { startDate: true } } },
       }),
       prisma.process.findUnique({ where: { id: processId }, select: { code: true } }),
     ]);
@@ -341,6 +346,7 @@ export async function updateBrandRule(
           customDaysOfWeek: operatingPattern === OperatingPattern.CUSTOM ? customDaysOfWeek : [],
           operatesOnHolidays,
           defaultMinStaffing: defaultMinStaffing!,
+          startDate: ruleStartDate ?? rule.brand.startDate,
         },
       });
       await writeCustomStaffing(tx, id, customStaffing);

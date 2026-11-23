@@ -4,7 +4,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface ListPageLoadingProps {
   title: string;
-  subtitle: string;
   statCount?: number;
   sections?: number;
   rows?: number;
@@ -14,7 +13,6 @@ interface ListPageLoadingProps {
 
 export function ListPageLoading({
   title,
-  subtitle,
   statCount = 4,
   sections = 1,
   rows = 8,
@@ -23,7 +21,7 @@ export function ListPageLoading({
 }: ListPageLoadingProps) {
   return (
     <AppShell>
-      <AppHeader title={title} subtitle={subtitle} />
+      <AppHeader title={title} />
       <div
         className="p-6 space-y-5 max-w-7xl mx-auto"
         role="status"

@@ -13,8 +13,7 @@ export default async function EmployeesPage() {
   return (
     <AppShell>
       <AppHeader
-        title="Employee Workforce Directory"
-        subtitle="Manage personnel profiles, pod assignments, weekly off configurations, and process certifications"
+        title="Employees"
       />
 
       <div className="p-6 space-y-5 max-w-7xl mx-auto">
@@ -30,7 +29,7 @@ export default async function EmployeesPage() {
             ))}
           </div>
           <span className="text-xs text-neutral-500 font-mono tabular-nums self-end sm:self-auto">
-            {employees.length} Personnel in DB
+            {employees.length} employees
           </span>
         </div>
 

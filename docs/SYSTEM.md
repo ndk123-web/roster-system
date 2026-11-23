@@ -91,9 +91,9 @@ The schema in `prisma/schema.prisma` is authoritative. The following relationshi
 
 - `Employee` has a unique `code` and `email`, one optional primary `Pod`, an `active` flag, effective-dated weekly offs, assignments, leave, comp-off, roster entries, and issues.
 - `Pod` has a unique name, one optional lead, and many members. The lead must be one of the members.
-- `Brand` and `Process` have unique names, unique codes, `active` flags, rules, assignments, allocations, and issues.
+- `Brand` and `Process` have unique names, unique codes, `active` flags, rules, assignments, allocations, and issues. A brand also has an optional `startDate` used as the default coverage start for its rules.
 - `EmployeeAssignment` joins one employee, one brand, and one process. It has an `active` flag, `isPrimary` flag, `effectiveFrom`, and optional `effectiveTo`.
-- `BrandProcessRule` is unique per brand-process pair. It stores `operatingPattern`, `customDaysOfWeek`, `operatesOnHolidays`, and `defaultMinStaffing`.
+- `BrandProcessRule` is unique per brand-process pair. It stores an optional `startDate`, `operatingPattern`, `customDaysOfWeek`, `operatesOnHolidays`, and `defaultMinStaffing`. When its start date is absent, the brand start date applies.
 - `CustomStaffingRule` overrides staffing by weekday or by specific date for one brand-process rule.
 - `PublicHoliday` is unique by date and has an `affectsAllProcesses` flag.
 - `EmployeeWeeklyOff` stores one effective-dated weekday off per employee and weekday.

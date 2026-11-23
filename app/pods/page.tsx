@@ -13,8 +13,7 @@ export default async function PodsPage() {
   return (
     <AppShell>
       <AppHeader
-        title="Operational Pods & Pod Leads"
-        subtitle="Team supervisory units, pod lead assignments, and department coverage tracking"
+        title="Pods"
       />
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto">

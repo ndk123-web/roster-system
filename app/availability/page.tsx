@@ -22,17 +22,16 @@ export default async function AvailabilityPage() {
   return (
     <AppShell>
       <AppHeader
-        title="Availability & Leave Management"
-        subtitle="Track approved leaves, comp-offs, and pending requests that affect roster coverage"
+        title="Availability"
       />
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Total Leave Requests", value: leaves.length },
-            { label: "Approved Leaves", value: approvedCount },
-            { label: "Pending Review", value: pendingCount },
-            { label: "Approved Comp-Offs", value: approvedCompOffs },
+            { label: "Leave Requests", value: leaves.length },
+            { label: "Approved", value: approvedCount },
+            { label: "Pending", value: pendingCount },
+            { label: "Comp-Offs", value: approvedCompOffs },
           ].map((stat) => (
             <div
               key={stat.label}

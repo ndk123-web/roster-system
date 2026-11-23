@@ -50,12 +50,19 @@ export async function createAssignment(
   try {
     const [employee, brand, process] = await Promise.all([
       prisma.employee.findUnique({ where: { id: employeeId! }, select: { active: true } }),
-      prisma.brand.findUnique({ where: { id: brandId! }, select: { active: true } }),
+      prisma.brand.findUnique({ where: { id: brandId! }, select: { active: true, startDate: true } }),
       prisma.process.findUnique({ where: { id: processId! }, select: { active: true } }),
     ]);
     if (!employee?.active) errors.employeeId = "Select an active employee.";
     if (!brand?.active) errors.brandId = "Select an active brand.";
     if (!process?.active) errors.processId = "Select an active process.";
+    const assignmentStart =
+      brand?.startDate && effectiveFrom && effectiveFrom < brand.startDate
+        ? brand.startDate
+        : effectiveFrom;
+    if (effectiveTo && assignmentStart && effectiveTo < assignmentStart) {
+      errors.effectiveTo = "Effective end must be on or after the brand start date.";
+    }
     if (hasErrors(errors)) return errorState("Fix the highlighted fields.", errors);
 
     const duplicate = await prisma.employeeAssignment.findFirst({
@@ -72,7 +79,7 @@ export async function createAssignment(
         employeeId: employeeId!,
         brandId: brandId!,
         processId: processId!,
-        effectiveFrom: effectiveFrom!,
+        effectiveFrom: assignmentStart!,
         effectiveTo,
         isPrimary,
         active,
@@ -128,12 +135,19 @@ export async function updateAssignment(
   try {
     const [employee, brand, process] = await Promise.all([
       prisma.employee.findUnique({ where: { id: employeeId! }, select: { active: true } }),
-      prisma.brand.findUnique({ where: { id: brandId! }, select: { active: true } }),
+      prisma.brand.findUnique({ where: { id: brandId! }, select: { active: true, startDate: true } }),
       prisma.process.findUnique({ where: { id: processId! }, select: { active: true } }),
     ]);
     if (!employee?.active) errors.employeeId = "Select an active employee.";
     if (!brand?.active) errors.brandId = "Select an active brand.";
     if (!process?.active) errors.processId = "Select an active process.";
+    const assignmentStart =
+      brand?.startDate && effectiveFrom && effectiveFrom < brand.startDate
+        ? brand.startDate
+        : effectiveFrom;
+    if (effectiveTo && assignmentStart && effectiveTo < assignmentStart) {
+      errors.effectiveTo = "Effective end must be on or after the brand start date.";
+    }
     if (hasErrors(errors)) return errorState("Fix the highlighted fields.", errors);
 
     const duplicate = await prisma.employeeAssignment.findFirst({
@@ -156,7 +170,7 @@ export async function updateAssignment(
         employeeId: employeeId!,
         brandId: brandId!,
         processId: processId!,
-        effectiveFrom: effectiveFrom!,
+        effectiveFrom: assignmentStart!,
         effectiveTo,
         isPrimary,
         active,

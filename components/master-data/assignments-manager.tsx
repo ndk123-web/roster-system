@@ -73,7 +73,7 @@ export function AssignmentsManager({
       label: "Effective From",
       type: "date",
       required: true,
-      hint: "First date this employee is eligible for this brand and process.",
+      hint: "First eligible date. Dates before the brand start use the brand start date.",
     },
     {
       name: "effectiveTo",
