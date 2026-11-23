@@ -30,30 +30,30 @@ export function StatsOverview({
 
   const stats = [
     {
-      title: "Total Workforce",
+      title: "Employees",
       value: String(totalEmployees),
       metricDetail: "Active Employees",
-      subtext: `Distributed across 4 operational pods`,
+      subtext: "",
       icon: UsersIcon,
       badge: `${activeRate}% Active`,
       badgeVariant: activeRate === 100 ? ("success" as const) : ("warning" as const),
     },
     {
-      title: "D2C Client Brands",
+      title: "Brands",
       value: String(totalBrands),
       metricDetail: "Configured Accounts",
       subtext: `${singleResourceBrandsCount} single-resource, ${multiResourceBrandsCount} multi-resource`,
       icon: BuildingIcon,
-      badge: "80 / 20 Model",
+      badge: "",
       badgeVariant: "secondary" as const,
     },
     {
       title: "Active Processes",
       value: String(totalProcesses),
-      metricDetail: "Core Workflows",
-      subtext: "CS, ACC, NDR, Retention (configurable rules)",
+      metricDetail: "",
+      subtext: "",
       icon: ProcessIcon,
-      badge: "365 & Custom",
+      badge: "",
       badgeVariant: "secondary" as const,
     },
     {
@@ -90,21 +90,26 @@ export function StatsOverview({
                 <span className="text-2xl font-bold tracking-tight text-neutral-900 tabular-nums">
                   {stat.value}
                 </span>
-                <span className="text-xs text-neutral-500 font-medium">
-                  {stat.metricDetail}
-                </span>
+                {stat.metricDetail ? (
+                  <span className="text-xs text-neutral-500 font-medium">
+                    {stat.metricDetail}
+                  </span>
+                ) : null}
               </div>
-              <p className="text-[11px] text-neutral-500 mt-1">
-                {stat.subtext}
-              </p>
+              {stat.subtext ? (
+                <p className="text-[11px] text-neutral-500 mt-1">
+                  {stat.subtext}
+                </p>
+              ) : null}
             </div>
 
-            <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
-              <Badge variant={stat.badgeVariant}>
-                {stat.badge}
-              </Badge>
-              <span className="text-[11px] text-neutral-400">Live DB</span>
-            </div>
+            {stat.badge ? (
+              <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
+                <Badge variant={stat.badgeVariant}>
+                  {stat.badge}
+                </Badge>
+              </div>
+            ) : null}
           </div>
         );
       })}

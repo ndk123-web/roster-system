@@ -10,33 +10,33 @@ import {
 export function QuickActions() {
   const actions = [
     {
-      title: "Generate November Roster",
-      description: "Run deterministic scheduling algorithm across all 32 active personnel.",
+      title: "Generate Roster",
+      description: "Create the monthly roster.",
       href: "/roster",
       icon: CalendarIcon,
-      actionText: "Open Generator",
+      actionText: "Open Roster",
       highlight: true,
     },
     {
       title: "Record Planned Leave",
-      description: "Log medical, casual, or comp-off with instant conflict re-calculation.",
+      description: "Log leave and check conflicts.",
       href: "/availability",
       icon: ClockIcon,
       actionText: "Manage Leaves",
     },
     {
       title: "Configure Operating Rules",
-      description: "Set 365-day, Sunday-off, or holiday policies for any client brand.",
+      description: "Set operating days and holiday rules per brand.",
       href: "/brands",
       icon: BuildingIcon,
       actionText: "Edit Rules",
     },
     {
       title: "Run Constraint Validation",
-      description: "Evaluate double-bookings, understaffed shifts, and weekly-off clashes.",
+      description: "Check double-bookings and staffing gaps.",
       href: "/issues",
       icon: RefreshCwIcon,
-      actionText: "View Diagnostics",
+      actionText: "View Issues",
     },
   ];
 
@@ -44,11 +44,8 @@ export function QuickActions() {
     <div className="bg-white rounded-lg border border-neutral-200 shadow-xs p-5">
       <div className="mb-4">
         <h2 className="text-sm font-semibold text-neutral-900">
-          Operational Quick Workflows
+          Quick Actions
         </h2>
-        <p className="text-xs text-neutral-500 mt-0.5">
-          Execute primary roster lifecycle actions and maintain workforce scheduling rules
-        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
