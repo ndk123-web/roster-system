@@ -74,7 +74,7 @@ export function StatsOverview({
         return (
           <div
             key={stat.title}
-            className="bg-white rounded-lg border border-neutral-200 p-4 shadow-xs flex flex-col justify-between"
+            className="bg-white rounded-lg border border-neutral-200 p-4 shadow-xs flex flex-col"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-neutral-500">
@@ -85,7 +85,7 @@ export function StatsOverview({
               </div>
             </div>
 
-            <div className="my-3">
+            <div className="flex flex-1 flex-col justify-center py-3">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold tracking-tight text-neutral-900 tabular-nums">
                   {stat.value}
@@ -96,20 +96,26 @@ export function StatsOverview({
                   </span>
                 ) : null}
               </div>
-              {stat.subtext ? (
-                <p className="text-[11px] text-neutral-500 mt-1">
-                  {stat.subtext}
-                </p>
-              ) : null}
+              <p
+                className={`mt-1 text-[11px] ${
+                  stat.subtext ? "text-neutral-500" : "invisible"
+                }`}
+              >
+                {stat.subtext || "-"}
+              </p>
             </div>
 
-            {stat.badge ? (
-              <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
+            <div
+              className={`min-h-8 flex items-center justify-between ${
+                stat.badge ? "border-t border-neutral-100 pt-2" : "pt-0"
+              }`}
+            >
+              {stat.badge ? (
                 <Badge variant={stat.badgeVariant}>
                   {stat.badge}
                 </Badge>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
         );
       })}
