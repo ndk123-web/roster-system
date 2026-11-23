@@ -215,6 +215,7 @@ Completed verification:
 - `npm run lint` passed.
 - `npx tsc --noEmit` passed.
 - `npm run build` passed with 16/16 static pages generated.
+- The production build uses the Next.js default Turbopack bundler so the configured Tailwind loader emits utility classes in the production CSS.
 - Browser smoke tests covered master-data CRUD, availability CRUD, availability status badge consistency, roster generation, roster views, issue persistence, manual edits, allocation removal, post-change revalidation, single-allocation reassignment, working-status-without-allocation rejection, and non-operating-day allocation rejection.
 - Browser navigation checks confirmed partial prerendering on every dynamic page, a persistent sidebar, loading skeletons on route transitions, and a single shared coverage-count request.
 - Browser console checks showed no runtime errors after final reload.
