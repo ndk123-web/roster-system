@@ -478,6 +478,7 @@ The latest verification passed lint, typecheck, and production build. Browser ch
 ### Runtime and delivery
 
 - `connection()` makes query-backed pages dynamic. Removing it can reintroduce prerender errors when a query reads the current date.
+- Development and production builds use Turbopack because the Tailwind loader is configured under `turbopack`. Forcing `--webpack` emits theme tokens but omits utility classes unless a separate PostCSS plugin is added.
 - Route-level skeletons appear while dynamic pages load. The sidebar remains mounted.
 - Production builds followed by `next dev` can serve stale `.next` output. Restart the dev server after a build.
 - The seed API POST requires `x-seed-token`. GET is open and only reports counts.
