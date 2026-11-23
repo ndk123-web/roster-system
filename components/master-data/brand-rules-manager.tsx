@@ -25,6 +25,7 @@ export interface BrandRuleRow {
   customDaysOfWeek: number[];
   operatesOnHolidays: boolean;
   defaultMinStaffing: number;
+  startDate: string | null;
   customStaffingRules: {
     id: string;
     dayOfWeek: number | null;
@@ -70,11 +71,13 @@ function describeOverride(rule: BrandRuleRow): string {
 export function BrandRulesManager({
   brandId,
   brandName,
+  brandStartDate,
   rules,
   processes,
 }: {
   brandId: string;
   brandName: string;
+  brandStartDate: string | null;
   rules: BrandRuleRow[];
   processes: ProcessOption[];
 }) {
@@ -109,6 +112,12 @@ export function BrandRulesManager({
       type: "select",
       required: true,
       options: Object.entries(PATTERN_LABELS).map(([value, label]) => ({ value, label })),
+    },
+    {
+      name: "startDate",
+      label: "Start Date",
+      type: "date",
+      hint: "Coverage starts on this date.",
     },
     {
       name: "customDaysOfWeek",
@@ -153,6 +162,7 @@ export function BrandRulesManager({
         customDaysOfWeek: editing.customDaysOfWeek.map(String),
         operatesOnHolidays: editing.operatesOnHolidays,
         defaultMinStaffing: String(editing.defaultMinStaffing),
+        startDate: editing.startDate ?? brandStartDate ?? "",
         customStaffingDay:
           override?.dayOfWeek !== null && override?.dayOfWeek !== undefined
             ? String(override.dayOfWeek)
@@ -167,6 +177,7 @@ export function BrandRulesManager({
         customDaysOfWeek: [],
         operatesOnHolidays: false,
         defaultMinStaffing: "1",
+        startDate: brandStartDate ?? "",
         customStaffingDay: "",
         customStaffingDate: "",
         customStaffingRequired: "",
@@ -201,6 +212,7 @@ export function BrandRulesManager({
                 </span>
               )}
               {rule.operatesOnHolidays ? "Holiday coverage required" : "Closed on holidays"}
+              {rule.startDate ? ` · From ${rule.startDate}` : ""}
               {describeOverride(rule)}
             </div>
             <div className="mt-1.5 flex gap-1.5">

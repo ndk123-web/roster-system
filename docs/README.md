@@ -112,7 +112,7 @@ Key directories:
 - `Employee` belongs to one primary `Pod` and owns effective-dated weekly offs.
 - `Pod` has one lead who must belong to that pod.
 - `Brand` and `Process` are many-to-many through `EmployeeAssignment`.
-- `BrandProcessRule` defines operating pattern, holiday behaviour, default staffing, and custom staffing per brand-process pair.
+- `BrandProcessRule` defines start date, operating pattern, holiday behaviour, default staffing, and custom staffing per brand-process pair.
 - `Roster` has one unique month/year, many `RosterEntry` rows, many `RosterAllocation` rows, and persisted `ValidationIssue` rows.
 - `AuditLog` records generation, publication, revalidation, and manual override actions.
 

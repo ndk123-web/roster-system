@@ -17,8 +17,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col min-h-full">
       <AppHeader
-        title="Operations Dashboard"
-        subtitle="Workforce allocation, client brand coverage, and conflict telemetry"
+        title="Dashboard"
       />
 
       <div className="p-6 space-y-6 max-w-7xl">

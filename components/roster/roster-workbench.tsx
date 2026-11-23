@@ -190,8 +190,7 @@ export function RosterWorkbench({
   return (
     <AppShell>
       <AppHeader
-        title="Monthly Roster Matrix"
-        subtitle="Database-backed draft generation, five stakeholder views, and daily coverage validation"
+        title="Roster"
       />
 
       <div className="p-6 space-y-5 max-w-[1600px] mx-auto">
@@ -274,7 +273,7 @@ export function RosterWorkbench({
 
           <div className="flex flex-wrap items-center gap-4 text-xs">
             <div>
-              <div className="text-[11px] text-neutral-500">Lifecycle state</div>
+              <div className="text-[11px] text-neutral-500">Status</div>
               <div className="font-semibold text-neutral-900">
                 {!view.meta
                   ? "Not Generated"
@@ -286,13 +285,13 @@ export function RosterWorkbench({
               </div>
             </div>
             <div>
-              <div className="text-[11px] text-neutral-500">Mandatory gaps</div>
+              <div className="text-[11px] text-neutral-500">Gaps</div>
               <div className={`font-semibold font-mono ${hasErrors ? "text-red-600" : "text-emerald-600"}`}>
                 {view.result.summary.mandatoryErrors}
               </div>
             </div>
             <div>
-              <div className="text-[11px] text-neutral-500">Coverage health</div>
+              <div className="text-[11px] text-neutral-500">Coverage</div>
               <div className="font-semibold font-mono text-neutral-900">
                 {view.result.summary.coverageHealthPercentage}%
               </div>
@@ -307,7 +306,7 @@ export function RosterWorkbench({
               No roster exists for {MONTHS[month - 1]} {year}
             </h2>
             <p className="text-xs text-neutral-500 mt-1 mb-4">
-              Generate a draft to calculate assignments, validate coverage, and populate all roster views.
+              Generate a draft to calculate assignments and coverage.
             </p>
             <Button variant="primary" size="sm" onClick={() => setDialog("generate")}>
               Generate Roster
@@ -318,11 +317,11 @@ export function RosterWorkbench({
             <div className="flex flex-wrap items-center gap-1 p-1 bg-neutral-100 rounded-lg border border-neutral-200/60 w-fit">
               {(
                 [
-                  ["company", "Company View", UsersIcon],
-                  ["pod", "Pod-Wise", PodIcon],
-                  ["brand", "Brand-Wise", BuildingIcon],
-                  ["process", "Process-Wise", ProcessIcon],
-                  ["employee", "Employee-Wise", UsersIcon],
+                  ["company", "Company", UsersIcon],
+                  ["pod", "Pod", PodIcon],
+                  ["brand", "Brand", BuildingIcon],
+                  ["process", "Process", ProcessIcon],
+                  ["employee", "Employee", UsersIcon],
                 ] as const
               ).map(([mode, label, Icon]) => (
                 <button
@@ -421,7 +420,7 @@ export function RosterWorkbench({
                     <thead>
                       <tr className="bg-neutral-50/90 border-b border-neutral-200">
                         <th className="sticky left-0 z-10 bg-neutral-50/95 px-4 py-3 font-semibold text-neutral-900 min-w-[210px] border-r border-neutral-200">
-                          Personnel &amp; Pod
+                          Employee
                         </th>
                         {calendarDates.map((day) => (
                           <th
@@ -495,7 +494,7 @@ export function RosterWorkbench({
                     <tfoot>
                       <tr className="bg-neutral-100/90 border-t-2 border-neutral-300 font-mono text-[10px]">
                         <td className="sticky left-0 z-10 bg-neutral-100 px-4 py-2.5 font-bold text-neutral-900 border-r border-neutral-300">
-                          DAILY COVERAGE
+                          COVERAGE
                         </td>
                         {dailyHealth.map((day) => (
                           <td
@@ -528,7 +527,7 @@ export function RosterWorkbench({
             {viewMode === "brand" && (
               <div className="bg-white rounded-lg border border-neutral-200 shadow-xs overflow-hidden">
                 <div className="p-3 bg-neutral-50 border-b border-neutral-200 text-xs font-semibold text-neutral-900">
-                  Brand-Wise Operating Requirements &amp; Daily Staffing
+                  Brand Coverage
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
@@ -602,7 +601,7 @@ export function RosterWorkbench({
             {viewMode === "process" && (
               <div className="bg-white rounded-lg border border-neutral-200 shadow-xs overflow-hidden">
                 <div className="p-3 bg-neutral-50 border-b border-neutral-200 text-xs font-semibold text-neutral-900">
-                  Process-Wise Operational Headcount Across Days
+                  Process Staffing
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
@@ -671,7 +670,7 @@ export function RosterWorkbench({
         open={dialog === "generate"}
         onClose={() => setDialog(null)}
         title={view.meta ? "Regenerate monthly roster?" : "Generate monthly roster?"}
-        description="This replaces the current draft for the selected month with a fresh schedule and validation results."
+        description="This replaces the current draft for the selected month."
         confirmLabel="Generate"
         action={generateRoster}
         id=""
@@ -682,7 +681,7 @@ export function RosterWorkbench({
         open={dialog === "publish"}
         onClose={() => setDialog(null)}
         title={`Publish ${MONTHS[month - 1]} ${year} roster?`}
-        description="Publishing locks this roster. All mandatory coverage gaps must be resolved first."
+        description="Publishing locks this roster. Resolve all gaps first."
         confirmLabel="Publish"
         action={publishMonthlyRoster}
         id=""
@@ -693,7 +692,7 @@ export function RosterWorkbench({
         open={dialog === "revalidate"}
         onClose={() => setDialog(null)}
         title="Revalidate all rosters?"
-        description="All rosters are validated against current configuration while preserving manual edits. Published schedules are not modified."
+        description="Recalculates drafts using current data. Published rosters are unchanged."
         confirmLabel="Revalidate"
         action={revalidateRosters}
         id=""
@@ -707,7 +706,7 @@ export function RosterWorkbench({
             <div className="flex items-start justify-between border-b border-neutral-100 pb-3">
               <div>
                 <h3 className="text-sm font-semibold text-neutral-900">
-                  Shift Details: {inspectedDay.employeeName}
+                  {inspectedDay.employeeName}
                 </h3>
                 <span className="text-xs text-neutral-500 font-mono">
                   {format(new Date(`${inspectedDay.day.date}T12:00:00`), "EEEE, MMMM d, yyyy")}
@@ -725,7 +724,7 @@ export function RosterWorkbench({
 
             <div className="space-y-3 text-xs">
               <div>
-                <span className="text-neutral-500 block mb-1">Roster Entry Status:</span>
+                <span className="text-neutral-500 block mb-1">Status</span>
                 <Badge
                   variant={
                     inspectedDay.day.status === "WORKING"
@@ -741,14 +740,14 @@ export function RosterWorkbench({
                 </Badge>
               </div>
               <div>
-                <span className="text-neutral-500 block mb-1">Activity Detail:</span>
+                <span className="text-neutral-500 block mb-1">Detail</span>
                 <p className="font-medium text-neutral-900">
-                  {inspectedDay.day.detail || "No additional shift notes"}
+                  {inspectedDay.day.detail || "-"}
                 </p>
               </div>
               {inspectedDay.day.allocations.length > 0 && (
                 <div>
-                  <span className="text-neutral-500 block mb-1">Allocated Brands &amp; Tasks:</span>
+                  <span className="text-neutral-500 block mb-1">Allocations</span>
                   <div className="space-y-1">
                     {inspectedDay.day.allocations.map((allocation) => (
                       <div
@@ -798,7 +797,7 @@ export function RosterWorkbench({
             setInspectedDay(null);
           }}
           title={`Edit roster entry: ${editingDay.employeeName}`}
-          description={`${format(new Date(`${editingDay.day.date}T12:00:00`), "EEEE, MMMM d, yyyy")} · changes revalidate this draft`}
+          description={format(new Date(`${editingDay.day.date}T12:00:00`), "EEEE, MMMM d, yyyy")}
           submitLabel="Save entry"
           action={updateRosterEntryAction}
           hiddenFields={{

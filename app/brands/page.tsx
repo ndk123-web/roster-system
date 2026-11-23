@@ -16,8 +16,7 @@ export default async function BrandsPage() {
   return (
     <AppShell>
       <AppHeader
-        title="D2C Client Brands"
-        subtitle="Manage brand-process configurations, operating calendars, and staffing requirements"
+        title="Brands"
       />
 
       <div className="p-6 space-y-5 max-w-7xl mx-auto">
@@ -28,11 +27,11 @@ export default async function BrandsPage() {
           </div>
           <div className="text-xs text-neutral-500">
             <span className="font-mono font-bold text-neutral-900 text-sm tabular-nums">{singleCount}</span>{" "}
-            Single-Resource (~80% model)
+            Single-resource
           </div>
           <div className="text-xs text-neutral-500">
             <span className="font-mono font-bold text-neutral-900 text-sm tabular-nums">{multiCount}</span>{" "}
-            Multi-Resource (~20% model)
+            Multi-resource
           </div>
         </div>
 

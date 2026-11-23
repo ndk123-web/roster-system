@@ -109,6 +109,7 @@ model Brand {
   name        String               @unique
   code        String               @unique // e.g. BRD-ALPHA
   active      Boolean              @default(true)
+  startDate   DateTime?
   assignments EmployeeAssignment[]
   rules       BrandProcessRule[]
   allocations RosterAllocation[]
@@ -159,6 +160,7 @@ model BrandProcessRule {
   customDaysOfWeek    Int[]            // 0=Sun, 1=Mon, ..., 6=Sat (when pattern is CUSTOM)
   operatesOnHolidays  Boolean          @default(false)
   defaultMinStaffing  Int              @default(1)
+  startDate           DateTime?
   
   brand   Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
   process Process @relation(fields: [processId], references: [id], onDelete: Cascade)

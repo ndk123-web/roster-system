@@ -24,21 +24,21 @@ interface NavItem {
 
 const primaryNav: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: DashboardIcon },
-  { name: "Monthly Roster", href: "/roster", icon: CalendarIcon },
-  { name: "Coverage Issues", href: "/issues", icon: AlertIcon },
+  { name: "Roster", href: "/roster", icon: CalendarIcon },
+  { name: "Issues", href: "/issues", icon: AlertIcon },
 ];
 
 const managementNav: NavItem[] = [
   { name: "Employees", href: "/employees", icon: UsersIcon },
   { name: "Brands", href: "/brands", icon: BuildingIcon },
   { name: "Processes", href: "/processes", icon: ProcessIcon },
-  { name: "Pods & Leads", href: "/pods", icon: PodIcon },
+  { name: "Pods", href: "/pods", icon: PodIcon },
   { name: "Assignments", href: "/assignments", icon: AssignmentIcon },
 ];
 
 const scheduleRulesNav: NavItem[] = [
-  { name: "Availability & Leaves", href: "/availability", icon: ClockIcon },
-  { name: "Public Holidays", href: "/holidays", icon: ShieldCheckIcon },
+  { name: "Availability", href: "/availability", icon: ClockIcon },
+  { name: "Holidays", href: "/holidays", icon: ShieldCheckIcon },
 ];
 
 export function AppSidebar() {
@@ -61,12 +61,6 @@ export function AppSidebar() {
           </div>
           <span className="truncate">Smart Roster</span>
         </Link>
-        <span
-          className="px-1.5 py-0.5 text-[10px] uppercase font-mono font-semibold tracking-wider bg-neutral-200/80 text-neutral-700 rounded"
-          translate="no"
-        >
-          OPS
-        </span>
       </div>
 
       {/* Navigation Sections */}
@@ -183,9 +177,6 @@ export function AppSidebar() {
           <div className="min-w-0 pr-2">
             <div className="text-xs font-semibold text-neutral-900 truncate">
               Operations Lead
-            </div>
-            <div className="text-[11px] text-neutral-500 truncate">
-              Lead Admin Access
             </div>
           </div>
           <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Online" />

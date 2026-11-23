@@ -16,11 +16,11 @@ export function UrgentConflictsPanel({ issues }: { issues: DashboardIssue[] }) {
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-semibold text-neutral-900">
-              Unresolved Telemetry & Coverage Gaps
+              Open Issues
             </h2>
             {errors > 0 ? (
               <Badge variant="error" className="tabular-nums">
-                {errors} Mandatory Error{errors === 1 ? "" : "s"}
+                {errors} Error{errors === 1 ? "" : "s"}
               </Badge>
             ) : null}
             {warnings > 0 ? (
@@ -31,7 +31,7 @@ export function UrgentConflictsPanel({ issues }: { issues: DashboardIssue[] }) {
             {issues.length === 0 ? <Badge variant="success">No open issues</Badge> : null}
           </div>
           <p className="text-xs text-neutral-500 mt-0.5">
-            Mandatory errors block roster publication to prevent client account outages.
+            Resolve errors before publishing.
           </p>
         </div>
 
@@ -61,7 +61,7 @@ export function UrgentConflictsPanel({ issues }: { issues: DashboardIssue[] }) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant={issue.severity === "ERROR" ? "error" : "warning"}>
                     <AlertIcon className="w-3 h-3 shrink-0" />
-                    <span>{issue.severity === "ERROR" ? "Mandatory Gap" : "Rule Warning"}</span>
+                    <span>{issue.severity === "ERROR" ? "Gap" : "Rule Warning"}</span>
                   </Badge>
                   {[
                     issue.brandName,
@@ -119,13 +119,6 @@ export function UrgentConflictsPanel({ issues }: { issues: DashboardIssue[] }) {
             </div>
           ))
         )}
-      </div>
-
-      <div className="px-5 py-3 bg-neutral-50/70 border-t border-neutral-100 rounded-b-lg flex items-center justify-between text-xs text-neutral-500">
-        <span>Rule engine re-checks constraints on every availability modification.</span>
-        <span className="font-medium text-neutral-700">
-          Hard constraint priority: Client Coverage &gt; Preference
-        </span>
       </div>
     </div>
   );

@@ -133,7 +133,7 @@ async function main() {
   ];
 
   await prisma.brand.createMany({
-    data: brands.map((brand) => ({ ...brand, active: true })),
+    data: brands.map((brand) => ({ ...brand, active: true, startDate: monthStart })),
   });
 
   const rules = brands.flatMap((brand, brandIndex) =>
@@ -144,6 +144,7 @@ async function main() {
       operatingPattern: "ALL_365",
       operatesOnHolidays: true,
       defaultMinStaffing: 1,
+      startDate: monthStart,
     })),
   );
 

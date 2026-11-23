@@ -15,11 +15,11 @@ export function CoverageHealth({ pods, totalEmployees }: CoverageHealthProps) {
         <div>
           <h2 className="text-sm font-semibold text-neutral-900 flex items-center gap-2">
             <PodIcon className="w-4 h-4 text-neutral-700" />
-            <span>Operational Pods</span>
+            <span>Pods</span>
           </h2>
           <p className="text-xs text-neutral-500 mt-0.5">
-            {pods.length} pods supervised by dedicated Pod Leads across{" "}
-            <span className="tabular-nums font-medium">{totalEmployees}</span> active personnel
+            {pods.length} pods across{" "}
+            <span className="tabular-nums font-medium">{totalEmployees}</span> employees
           </p>
         </div>
 
@@ -65,7 +65,7 @@ export function CoverageHealth({ pods, totalEmployees }: CoverageHealthProps) {
                   <div className="text-[11px] text-neutral-500 mt-0.5">
                     {pod.leadName ? (
                       <>
-                        Supervisor:{" "}
+                        Lead:{" "}
                         <span className="font-medium text-neutral-700">{pod.leadName}</span> •{" "}
                       </>
                     ) : null}
@@ -94,9 +94,9 @@ export function CoverageHealth({ pods, totalEmployees }: CoverageHealthProps) {
       </div>
 
       <div className="mt-auto px-5 py-3 bg-neutral-50/70 border-t border-neutral-100 rounded-b-lg flex items-center justify-between text-xs text-neutral-500">
-        <span>Target: 100% Client Coverage on operating days</span>
+        <span>Target: full coverage</span>
         <span className="font-mono text-neutral-700 tabular-nums">
-          Total Headcount: {totalEmployees}
+          Employees: {totalEmployees}
         </span>
       </div>
     </div>
